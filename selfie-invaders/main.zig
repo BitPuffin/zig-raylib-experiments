@@ -109,7 +109,7 @@ pub fn main() void {
                 if(state.playerPos > cameraMax) state.playerPos = cameraMax;
             }
 
-            {  // update people
+            {  // update faces
                 state.facePos += FaceSpeed * state.faceDirection;
 
                 if(state.faceDirection == 1
