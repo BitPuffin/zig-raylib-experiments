@@ -9,6 +9,8 @@ const screenHeight = 960;
 
 const PersonCount = 16;
 const PersonPadding = 30;
+const PersonPerRow = 8;
+const PersonSpeed = 8;
 
 const MaxBullets = 8;
 const MaxPersonBullets = 4;
@@ -27,7 +29,9 @@ const PersonState = packed enum(u2) {
 const GameState = struct {
     personStates: [PersonCount]PersonState,
     timeSinceDeaths: [PersonCount]f64,
-    playerPos: i64, // x axis only
+    playerPos: c_int, // x axis only
+    personPos: c_int,
+    personDirection: c_int,
 };
 
 pub fn main() void {
@@ -39,12 +43,21 @@ pub fn main() void {
 
     var state: GameState = undefined;
     state.playerPos = @divFloor((screenWidth - cameraTex.width), 2); // center
+    state.personDirection = 1;
+    state.personPos = 0;
     {   // set zero
         mem.secureZero(f64, state.timeSinceDeaths[0..]);
         mem.secureZero(PersonState, state.personStates[0..]);
     }
 
     var wearyFaceTex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
+    const PersonXMax = blk: {
+        var result: c_int = wearyFaceTex.width + PersonPadding;
+        result *= PersonPerRow;
+        result += PersonPadding;
+        result = screenWidth - result;
+        break :blk result;
+    };
 
     while (!ray.WindowShouldClose()) {
         {   // drawing
@@ -63,7 +76,7 @@ pub fn main() void {
                 var xOffset: c_int = 0;
                 for(state.personStates) |s, idx| {
                     const ci = @intCast(c_int, idx);
-                    if(idx > 0 and idx % 8 == 0) {
+                    if(idx > 0 and idx % PersonPerRow == 0) {
                         row += 1;
                         xOffset = 0;
                     }
@@ -72,7 +85,7 @@ pub fn main() void {
                             row * (wearyFaceTex.height + PersonPadding);
                         ray.DrawTexture(
                             wearyFaceTex,
-                            PersonPadding + xOffset,
+                            state.personPos + PersonPadding + xOffset,
                             y,
                             ray.WHITE);
                     }
@@ -84,15 +97,31 @@ pub fn main() void {
         }
 
         {   // update
-            if(ray.IsKeyDown(ray.lib.KEY_LEFT)) {
-                state.playerPos -= cameraSpeed;
-            }
-            if(ray.IsKeyDown(ray.lib.KEY_RIGHT)) {
-                state.playerPos += cameraSpeed;
+            {   // update player
+                if(ray.IsKeyDown(ray.lib.KEY_LEFT)) {
+                    state.playerPos -= cameraSpeed;
+                }
+                if(ray.IsKeyDown(ray.lib.KEY_RIGHT)) {
+                    state.playerPos += cameraSpeed;
+                }
+
+                if(state.playerPos < cameraMin) state.playerPos = cameraMin;
+                if(state.playerPos > cameraMax) state.playerPos = cameraMax;
             }
 
-            if(state.playerPos < cameraMin) state.playerPos = cameraMin;
-            if(state.playerPos > cameraMax) state.playerPos = cameraMax;
+            {  // update people
+                state.personPos += PersonSpeed * state.personDirection;
+
+                if(state.personDirection == 1
+                       and state.personPos > PersonXMax) {
+                    state.personDirection = -1;
+                    state.personPos = PersonXMax;
+                } else if(state.personDirection == -1
+                              and state.personPos < 0) {
+                    state.personDirection = 1;
+                    state.personPos = 0;
+                }
+            }
         }
         warn("time: {}\n", ray.GetFrameTime());
     }
