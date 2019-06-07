@@ -7,31 +7,31 @@ const ray = @import("ray");
 const screenWidth = 1280;
 const screenHeight = 960;
 
-const PersonCount = 16;
-const PersonPadding = 30;
-const PersonPerRow = 8;
-const PersonSpeed = 8;
+const FaceCount = 16;
+const FacePadding = 30;
+const FacePerRow = 8;
+const FaceSpeed = 8;
 
 const MaxBullets = 8;
-const MaxPersonBullets = 4;
+const MaxFaceBullets = 4;
 
 const cameraSpeed = 16;
 
 const screenOffset = 100;
 const cameraMin = 0 + screenOffset;
 
-const PersonState = packed enum(u2) {
+const FaceState = packed enum(u2) {
     ALIVE,
     DYING,
     DEAD
 };
 
 const GameState = struct {
-    personStates: [PersonCount]PersonState,
-    timeSinceDeaths: [PersonCount]f64,
+    faceStates: [FaceCount]FaceState,
+    timeSinceDeaths: [FaceCount]f64,
     playerPos: c_int, // x axis only
-    personPos: c_int,
-    personDirection: c_int,
+    facePos: c_int,
+    faceDirection: c_int,
 };
 
 pub fn main() void {
@@ -43,18 +43,18 @@ pub fn main() void {
 
     var state: GameState = undefined;
     state.playerPos = @divFloor((screenWidth - cameraTex.width), 2); // center
-    state.personDirection = 1;
-    state.personPos = 0;
+    state.faceDirection = 1;
+    state.facePos = 0;
     {   // set zero
         mem.secureZero(f64, state.timeSinceDeaths[0..]);
-        mem.secureZero(PersonState, state.personStates[0..]);
+        mem.secureZero(FaceState, state.faceStates[0..]);
     }
 
     var wearyFaceTex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
-    const PersonXMax = blk: {
-        var result: c_int = wearyFaceTex.width + PersonPadding;
-        result *= PersonPerRow;
-        result += PersonPadding;
+    const FaceXMax = blk: {
+        var result: c_int = wearyFaceTex.width + FacePadding;
+        result *= FacePerRow;
+        result += FacePadding;
         result = screenWidth - result;
         break :blk result;
     };
@@ -68,28 +68,28 @@ pub fn main() void {
             ray.DrawFPS(100,0);
             ray.DrawTexture(cameraTex,
                             @intCast(c_int, state.playerPos),
-                            screenHeight - cameraTex.height - PersonPadding,
+                            screenHeight - cameraTex.height - FacePadding,
                             ray.WHITE);
 
             {   // draw faces
                 var row: c_int = 0;
                 var xOffset: c_int = 0;
-                for(state.personStates) |s, idx| {
+                for(state.faceStates) |s, idx| {
                     const ci = @intCast(c_int, idx);
-                    if(idx > 0 and idx % PersonPerRow == 0) {
+                    if(idx > 0 and idx % FacePerRow == 0) {
                         row += 1;
                         xOffset = 0;
                     }
-                    if(s == PersonState.ALIVE) {
-                        const y = PersonPadding +
-                            row * (wearyFaceTex.height + PersonPadding);
+                    if(s == FaceState.ALIVE) {
+                        const y = FacePadding +
+                            row * (wearyFaceTex.height + FacePadding);
                         ray.DrawTexture(
                             wearyFaceTex,
-                            state.personPos + PersonPadding + xOffset,
+                            state.facePos + FacePadding + xOffset,
                             y,
                             ray.WHITE);
                     }
-                    xOffset += PersonPadding + wearyFaceTex.width;
+                    xOffset += FacePadding + wearyFaceTex.width;
                 }
             }
 
@@ -110,16 +110,16 @@ pub fn main() void {
             }
 
             {  // update people
-                state.personPos += PersonSpeed * state.personDirection;
+                state.facePos += FaceSpeed * state.faceDirection;
 
-                if(state.personDirection == 1
-                       and state.personPos > PersonXMax) {
-                    state.personDirection = -1;
-                    state.personPos = PersonXMax;
-                } else if(state.personDirection == -1
-                              and state.personPos < 0) {
-                    state.personDirection = 1;
-                    state.personPos = 0;
+                if(state.faceDirection == 1
+                       and state.facePos > FaceXMax) {
+                    state.faceDirection = -1;
+                    state.facePos = FaceXMax;
+                } else if(state.faceDirection == -1
+                              and state.facePos < 0) {
+                    state.faceDirection = 1;
+                    state.facePos = 0;
                 }
             }
         }
