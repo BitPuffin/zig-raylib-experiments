@@ -71,7 +71,7 @@ pub fn main() void {
     }
 
     var wearyFaceTex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
-    const FaceXMax = blk: {
+    const face_x_max = blk: {
         var result: c_int = wearyFaceTex.width + face_padding;
         result *= face_per_row;
         result += face_padding;
@@ -162,9 +162,9 @@ pub fn main() void {
                 state.face_pos += face_speed * state.face_direction;
 
                 if(state.face_direction == 1
-                       and state.face_pos > FaceXMax) {
+                       and state.face_pos > face_x_max) {
                     state.face_direction = -1;
-                    state.face_pos = FaceXMax;
+                    state.face_pos = face_x_max;
                 } else if(state.face_direction == -1
                               and state.face_pos < 0) {
                     state.face_direction = 1;
