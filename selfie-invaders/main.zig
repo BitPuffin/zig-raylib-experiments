@@ -4,7 +4,7 @@ const warn = std.debug.warn;
 
 const ray = @import("ray");
 
-const screenWidth = 1280;
+const screen_width = 1280;
 const screen_height = 960;
 
 const face_count = 16;
@@ -18,6 +18,9 @@ const max_face_bullets = 4;
 const bullet_speed = 12;
 
 const camera_speed = 16;
+const camera_padding = face_padding;
+const camera_hitbox_shrink_y = 20;
+const camera_hitbox_shrink_x = 10;
 
 const screen_offset = 100;
 const camera_min = 0 + screen_offset;
@@ -52,16 +55,17 @@ const GameState = struct {
 };
 
 pub fn main() void {
-    ray.InitWindow(screenWidth, screen_height, c"Selfie Invaders");
+    ray.InitWindow(screen_width, screen_height, c"Selfie Invaders");
     ray.SetTargetFPS(60);
 
     var camera_tex = ray.LoadTexture(c"selfie-invaders/camera.png");
-    const camera_max = screenWidth - (camera_tex.width + screen_offset);
+    const player_y = screen_height - camera_tex.height - face_padding;
+    const camera_max = screen_width - (camera_tex.width + screen_offset);
 
     var state: GameState = undefined;
     state.fire_state = FireState.READY;
     state.fire_timeout = 0.0;
-    state.player_pos = @divFloor((screenWidth - camera_tex.width), 2); // center
+    state.player_pos = @divFloor((screen_width - camera_tex.width), 2); // center
     state.face_direction = 1;
     state.face_pos = 0;
     {   // set zero
@@ -69,15 +73,30 @@ pub fn main() void {
         mem.secureZero(FaceState, state.face_states[0..]);
         mem.secureZero(Bullet, state.player_bullets[0..]);
     }
+    var no_debug_drawing = true;
 
-    var wearyFaceTex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
-    const face_x_max = blk: {
-        var result: c_int = wearyFaceTex.width + face_padding;
+    var weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
+    const face_x_max = block: {
+        var result: c_int = weary_face_tex.width + face_padding;
         result *= face_per_row;
         result += face_padding;
-        result = screenWidth - result;
-        break :blk result;
+        result = screen_width - result;
+        break :block result;
     };
+    const face_collision_zone = block: {
+        comptime var row_count = face_count / face_per_row;
+        if(face_count % face_per_row != 0) row_count += 1;
+
+        const face_and_padding = weary_face_tex.height + face_padding;
+        const y = row_count * face_and_padding;
+            
+        break :block y;
+    };
+    const camera_collision_zone =
+        screen_height
+        - camera_tex.height
+        - camera_padding
+        + camera_hitbox_shrink_y;
 
     while (!ray.WindowShouldClose()) {
         {   // drawing
@@ -87,10 +106,29 @@ pub fn main() void {
             
             ray.DrawFPS(100,0);
             ray.DrawTexture(camera_tex,
-                            @intCast(c_int, state.player_pos),
-                            screen_height - camera_tex.height - face_padding,
+                            state.player_pos,
+                            player_y,
                             ray.WHITE);
 
+            debug_drawing: {
+                if(no_debug_drawing) break :debug_drawing;
+                ray.DrawLine(0,
+                             face_collision_zone,
+                             screen_width,
+                             face_collision_zone,
+                             ray.GREEN);
+                ray.DrawLine(0,
+                             camera_collision_zone,
+                             screen_width,
+                             camera_collision_zone,
+                             ray.GREEN);
+                ray.DrawRectangleLines(state.player_pos + camera_hitbox_shrink_x,
+                                       player_y + camera_hitbox_shrink_y,
+                                       camera_tex.width - camera_hitbox_shrink_x*2,
+                                       camera_tex.height - camera_hitbox_shrink_x*2,
+                                       ray.PURPLE);
+            }
+            
             {   // draw faces
                 var row: c_int = 0;
                 var xOffset: c_int = 0;
@@ -102,14 +140,14 @@ pub fn main() void {
                     }
                     if(s == FaceState.ALIVE) {
                         const y = face_padding +
-                            row * (wearyFaceTex.height + face_padding);
+                            row * (weary_face_tex.height + face_padding);
                         ray.DrawTexture(
-                            wearyFaceTex,
+                            weary_face_tex,
                             state.face_pos + face_padding + xOffset,
                             y,
                             ray.WHITE);
                     }
-                    xOffset += face_padding + wearyFaceTex.width;
+                    xOffset += face_padding + weary_face_tex.width;
                 }
             }
 
@@ -179,6 +217,12 @@ pub fn main() void {
                     if(bull.y < -100) {
                         freeBulletAt(state.player_bullets[0..], idx);
                     }
+                }
+            }
+
+            {   // update debug
+                if(ray.IsKeyPressed(ray.lib.KEY_D)) {
+                    no_debug_drawing = !no_debug_drawing;
                 }
             }
         }
