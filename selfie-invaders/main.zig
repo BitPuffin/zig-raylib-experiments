@@ -73,7 +73,7 @@ pub fn main() void {
         mem.secureZero(FaceState, state.face_states[0..]);
         mem.secureZero(Bullet, state.player_bullets[0..]);
     }
-    var no_debug_drawing = true;
+    var debug_drawing = false;
 
     var weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
     const face_x_max = block: {
@@ -138,8 +138,7 @@ pub fn main() void {
                 }
             }
 
-            debug_drawing: {
-                if(no_debug_drawing) break :debug_drawing;
+            if(debug_drawing) {
                 ray.DrawFPS(100,0);
                 ray.DrawLine(0,
                              face_collision_zone,
@@ -222,7 +221,7 @@ pub fn main() void {
 
             {   // update debug
                 if(ray.IsKeyPressed(ray.lib.KEY_D)) {
-                    no_debug_drawing = !no_debug_drawing;
+                    debug_drawing = !debug_drawing;
                 }
             }
         }
