@@ -101,17 +101,11 @@ pub fn main() void {
     while (!ray.WindowShouldClose()) {
         {   // drawing
             ray.BeginDrawing();
-            
             ray.ClearBackground(ray.RAYWHITE);
-            
-            ray.DrawFPS(100,0);
-            ray.DrawTexture(camera_tex,
-                            state.player_pos,
-                            player_y,
-                            ray.WHITE);
 
             debug_drawing: {
                 if(no_debug_drawing) break :debug_drawing;
+                ray.DrawFPS(100,0);
                 ray.DrawLine(0,
                              face_collision_zone,
                              screen_width,
@@ -128,6 +122,12 @@ pub fn main() void {
                                        camera_tex.height - camera_hitbox_shrink_x*2,
                                        ray.PURPLE);
             }
+
+            // draw player
+            ray.DrawTexture(camera_tex,
+                            state.player_pos,
+                            player_y,
+                            ray.WHITE);
             
             {   // draw faces
                 var row: c_int = 0;
