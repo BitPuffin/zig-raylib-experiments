@@ -103,26 +103,6 @@ pub fn main() void {
             ray.BeginDrawing();
             ray.ClearBackground(ray.RAYWHITE);
 
-            debug_drawing: {
-                if(no_debug_drawing) break :debug_drawing;
-                ray.DrawFPS(100,0);
-                ray.DrawLine(0,
-                             face_collision_zone,
-                             screen_width,
-                             face_collision_zone,
-                             ray.GREEN);
-                ray.DrawLine(0,
-                             camera_collision_zone,
-                             screen_width,
-                             camera_collision_zone,
-                             ray.GREEN);
-                ray.DrawRectangleLines(state.player_pos + camera_hitbox_shrink_x,
-                                       player_y + camera_hitbox_shrink_y,
-                                       camera_tex.width - camera_hitbox_shrink_x*2,
-                                       camera_tex.height - camera_hitbox_shrink_x*2,
-                                       ray.PURPLE);
-            }
-
             // draw player
             ray.DrawTexture(camera_tex,
                             state.player_pos,
@@ -156,6 +136,26 @@ pub fn main() void {
                     if (isBulletClear(bull)) break;
                     ray.DrawRectangle(bull.x, bull.y, 10, 10, ray.RED);
                 }
+            }
+
+            debug_drawing: {
+                if(no_debug_drawing) break :debug_drawing;
+                ray.DrawFPS(100,0);
+                ray.DrawLine(0,
+                             face_collision_zone,
+                             screen_width,
+                             face_collision_zone,
+                             ray.GREEN);
+                ray.DrawLine(0,
+                             camera_collision_zone,
+                             screen_width,
+                             camera_collision_zone,
+                             ray.GREEN);
+                ray.DrawRectangleLines(state.player_pos + camera_hitbox_shrink_x,
+                                       player_y + camera_hitbox_shrink_y,
+                                       camera_tex.width - camera_hitbox_shrink_x*2,
+                                       camera_tex.height - camera_hitbox_shrink_x*2,
+                                       ray.PURPLE);
             }
 
             ray.EndDrawing();
