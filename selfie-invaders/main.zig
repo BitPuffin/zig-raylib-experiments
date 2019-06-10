@@ -16,6 +16,8 @@ const max_bullets = 8;
 const bullet_timeout = 0.3;
 const max_face_bullets = 4;
 const bullet_speed = 16;
+const bullet_width = 10;
+const bullet_height = 20;
 
 const camera_speed = 16;
 const camera_padding = face_padding;
@@ -130,7 +132,11 @@ pub fn main() void {
             {  // draw player bullets
                 for(state.player_bullets) |bull| {
                     if (isBulletClear(bull)) break;
-                    ray.DrawRectangle(bull.x, bull.y, 10, 10, ray.RED);
+                    ray.DrawRectangle(bull.x,
+                                      bull.y,
+                                      bullet_width,
+                                      bullet_height,
+                                      ray.RED);
                 }
             }
 
@@ -222,6 +228,35 @@ pub fn main() void {
                     bull.y -= bullet_speed;
                     if(bull.y < -100) {
                         freeBulletAt(state.player_bullets[0..], idx);
+                    }
+                    if(bull.y < face_collision_zone) {
+                        for(state.face_states) |*fs, i| {
+                            if(fs.* != .ALIVE) continue;
+                            const xy = getFaceXY(i,
+                                                 state.face_pos,
+                                                 face_width,
+                                                 face_height);
+                            const face_x_end = xy.x + face_width;
+                            const face_y_end = xy.y + face_height;
+                            const bull_x_end = bull.x + bullet_width;
+                            const bull_y_end = bull.y + bullet_height;
+                            // const col_pred =
+                            //     ((face_x_end < bull.x and bull.x > xy.x)
+                            //          or (bull_x_end > xy.x and bull_x_end < face_x_end))
+                            //     and
+                            //     ((bull.y < face_y_end and bull.y > xy.y)
+                            //          or (bull_y_end > xy.y and bull_y_end < face_y_end));
+                            const col_pred = !(
+                                xy.x > bull_x_end or
+                                face_x_end < bull.x or
+                                xy.y > bull_y_end or
+                                face_y_end < bull.y
+                            );
+                            if(col_pred) {
+                                fs.* = .DYING;
+                                freeBulletAt(state.player_bullets[0..], idx);
+                            }
+                        }
                     }
                 }
             }
