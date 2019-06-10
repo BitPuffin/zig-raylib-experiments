@@ -75,9 +75,11 @@ pub fn main() void {
     }
     var debug_drawing = false;
 
-    var weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
+    const weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
+    const face_width = weary_face_tex.width;
+    const face_height = weary_face_tex.height;
     const face_x_max = block: {
-        var result: c_int = weary_face_tex.width + face_padding;
+        var result: c_int = face_width + face_padding;
         result *= face_per_row;
         result += face_padding;
         result = screen_width - result;
@@ -87,7 +89,7 @@ pub fn main() void {
         comptime var row_count = face_count / face_per_row;
         if(face_count % face_per_row != 0) row_count += 1;
 
-        const face_and_padding = weary_face_tex.height + face_padding;
+        const face_and_padding = face_height + face_padding;
         const y = row_count * face_and_padding;
             
         break :block y;
@@ -114,8 +116,8 @@ pub fn main() void {
                     if(s == FaceState.ALIVE) {
                         const xy = getFaceXY(idx,
                                              state.face_pos,
-                                             weary_face_tex.width,
-                                             weary_face_tex.height);
+                                             face_width,
+                                             face_height);
                         ray.DrawTexture(
                             weary_face_tex,
                             xy.x, //state.face_pos + face_padding + xOffset,
@@ -151,12 +153,12 @@ pub fn main() void {
                                        ray.PURPLE);
                 for(state.face_states) |s, idx| {
                     if(s == .ALIVE) {
-                        const xy = getFaceXY(idx, state.face_pos, weary_face_tex.width, weary_face_tex.height);
+                        const xy = getFaceXY(idx, state.face_pos, face_width, face_height);
                         ray.DrawRectangleLines(
-                            xy.x, //(face_padding + weary_face_tex.width) * col,
+                            xy.x, //(face_padding + face_width) * col,
                             xy.y,
-                            weary_face_tex.width,
-                            weary_face_tex.height,
+                            face_width,
+                            face_height,
                             ray.PURPLE);
                     }
                 }
