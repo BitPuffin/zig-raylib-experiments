@@ -15,7 +15,7 @@ const face_speed = 8;
 const max_bullets = 8;
 const bullet_timeout = 0.3;
 const max_face_bullets = 4;
-const bullet_speed = 12;
+const bullet_speed = 16;
 
 const camera_speed = 16;
 const camera_padding = face_padding;
@@ -155,6 +155,28 @@ pub fn main() void {
                                        camera_tex.width - camera_hitbox_shrink_x*2,
                                        camera_tex.height - camera_hitbox_shrink_x*2,
                                        ray.PURPLE);
+                for(state.face_states) |s, idx| {
+                    if(s == .ALIVE) {
+                        var row: c_int = @intCast(c_int, idx / face_per_row);
+                        var row_idx = @intCast(c_int, idx % face_per_row);
+                        var col = row_idx + 1;
+                        // {
+                        //     var r = idx / face_per_row;
+                        //     var ri = idx % face_per_row;
+                        //     // if(ri != 0 and idx != 0) r += 1;
+                        //     row = @intCast(c_int, r);
+                        //     col = @intCast(c_int, ri) + 1;
+                        // }
+                        const wfw = weary_face_tex.width;
+                        const x = state.face_pos + face_padding + (face_padding + wfw) * row_idx;
+                        ray.DrawRectangleLines(
+                            x, //(face_padding + weary_face_tex.width) * col,
+                            face_padding + row * (weary_face_tex.height + face_padding),
+                            weary_face_tex.width,
+                            weary_face_tex.height,
+                            ray.PURPLE);
+                    }
+                }
             }
 
             ray.EndDrawing();
