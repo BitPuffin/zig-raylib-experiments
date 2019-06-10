@@ -110,24 +110,18 @@ pub fn main() void {
                             ray.WHITE);
             
             {   // draw faces
-                var row: c_int = 0;
-                var xOffset: c_int = 0;
                 for(state.face_states) |s, idx| {
-                    const ci = @intCast(c_int, idx);
-                    if(idx > 0 and idx % face_per_row == 0) {
-                        row += 1;
-                        xOffset = 0;
-                    }
                     if(s == FaceState.ALIVE) {
-                        const y = face_padding +
-                            row * (weary_face_tex.height + face_padding);
+                        const xy = getFaceXY(idx,
+                                             state.face_pos,
+                                             weary_face_tex.width,
+                                             weary_face_tex.height);
                         ray.DrawTexture(
                             weary_face_tex,
-                            state.face_pos + face_padding + xOffset,
-                            y,
+                            xy.x, //state.face_pos + face_padding + xOffset,
+                            xy.y,
                             ray.WHITE);
                     }
-                    xOffset += face_padding + weary_face_tex.width;
                 }
             }
 
@@ -157,21 +151,10 @@ pub fn main() void {
                                        ray.PURPLE);
                 for(state.face_states) |s, idx| {
                     if(s == .ALIVE) {
-                        var row: c_int = @intCast(c_int, idx / face_per_row);
-                        var row_idx = @intCast(c_int, idx % face_per_row);
-                        var col = row_idx + 1;
-                        // {
-                        //     var r = idx / face_per_row;
-                        //     var ri = idx % face_per_row;
-                        //     // if(ri != 0 and idx != 0) r += 1;
-                        //     row = @intCast(c_int, r);
-                        //     col = @intCast(c_int, ri) + 1;
-                        // }
-                        const wfw = weary_face_tex.width;
-                        const x = state.face_pos + face_padding + (face_padding + wfw) * row_idx;
+                        const xy = getFaceXY(idx, state.face_pos, weary_face_tex.width, weary_face_tex.height);
                         ray.DrawRectangleLines(
-                            x, //(face_padding + weary_face_tex.width) * col,
-                            face_padding + row * (weary_face_tex.height + face_padding),
+                            xy.x, //(face_padding + weary_face_tex.width) * col,
+                            xy.y,
                             weary_face_tex.width,
                             weary_face_tex.height,
                             ray.PURPLE);
@@ -248,6 +231,27 @@ pub fn main() void {
             }
         }
     }
+}
+
+const PosXY = struct { x: c_int, y: c_int };
+fn getFaceXY(
+    idx: usize,
+    face_pos: c_int,
+    tex_width: c_int,
+    tex_height: c_int) PosXY
+{
+    var row: c_int = @intCast(c_int, idx / face_per_row);
+    var row_idx = @intCast(c_int, idx % face_per_row);
+    var col = row_idx + 1;
+    const wfw = tex_width;
+    const x = blk: {
+        var mk_x = (face_padding + wfw) * row_idx;
+            mk_x += face_padding;
+        mk_x += face_pos;
+        break :blk mk_x;
+    };
+    const y = face_padding + row * (tex_height + face_padding);
+    return PosXY { .x = x, .y = y };
 }
 
 fn isBulletClear(bull: Bullet) bool { return bull.x == 0 and bull.y == 0; }
