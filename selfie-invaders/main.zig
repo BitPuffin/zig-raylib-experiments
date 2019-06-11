@@ -4,6 +4,10 @@ const warn = std.debug.warn;
 
 const ray = @import("ray");
 
+// const c = @cImport({
+//     @cInclude("");
+// });
+
 const screen_width = 1280;
 const screen_height = 960;
 
@@ -44,7 +48,14 @@ const Bullet = struct {
     y: c_int,
 };
 
+const GameCondition = enum {
+    PLAYING,
+    WON,
+    LOST,
+};
+
 const GameState = struct {
+    condition: GameCondition,
     face_states: [face_count]FaceState,
     time_since_deaths: [face_count]f64,
     player_bullets: [max_bullets]Bullet,
@@ -63,18 +74,11 @@ pub fn main() void {
     var camera_tex = ray.LoadTexture(c"selfie-invaders/camera.png");
     const player_y = screen_height - camera_tex.height - face_padding;
     const camera_max = screen_width - (camera_tex.width + screen_offset);
+    const player_starting_pos = @divFloor((screen_width - camera_tex.width), 2);
 
     var state: GameState = undefined;
-    state.fire_state = FireState.READY;
-    state.fire_timeout = 0.0;
-    state.player_pos = @divFloor((screen_width - camera_tex.width), 2); // center
-    state.face_direction = 1;
-    state.face_pos = 0;
-    {   // set zero
-        mem.secureZero(f64, state.time_since_deaths[0..]);
-        mem.secureZero(FaceState, state.face_states[0..]);
-        mem.secureZero(Bullet, state.player_bullets[0..]);
-    }
+    resetGame(&state, player_starting_pos);
+
     var debug_drawing = false;
 
     const weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
@@ -101,6 +105,8 @@ pub fn main() void {
         - camera_tex.height
         - camera_padding
         + camera_hitbox_shrink_y;
+
+    const fnt = ray.GetFontDefault();
 
     while (!ray.WindowShouldClose()) {
         {   // drawing
@@ -129,7 +135,7 @@ pub fn main() void {
                 }
             }
 
-            {  // draw player bullets
+            {   // draw player bullets
                 for(state.player_bullets) |bull| {
                     if (isBulletClear(bull)) break;
                     ray.DrawRectangle(bull.x,
@@ -138,6 +144,14 @@ pub fn main() void {
                                       bullet_height,
                                       ray.RED);
                 }
+            }
+
+            switch(state.condition) {
+                .PLAYING => {},
+                .WON => {
+                    ray.DrawText(c"Congratulations! (space for reset)", 50, 100, 14, ray.BLACK);
+                },
+                .LOST => {}
             }
 
             if(debug_drawing) {
@@ -174,51 +188,70 @@ pub fn main() void {
         }
 
         {   // update
-            {   // update player
-                if(ray.IsKeyDown(ray.lib.KEY_LEFT)) {
-                    state.player_pos -= camera_speed;
-                }
-                if(ray.IsKeyDown(ray.lib.KEY_RIGHT)) {
-                    state.player_pos += camera_speed;
-                }
+            // update player
+            switch(state.condition ) {
+                .PLAYING => {
+                    if(ray.IsKeyDown(ray.lib.KEY_LEFT)) {
+                        state.player_pos -= camera_speed;
+                    }
+                    if(ray.IsKeyDown(ray.lib.KEY_RIGHT)) {
+                        state.player_pos += camera_speed;
+                    }
 
-                if(state.player_pos < camera_min) state.player_pos = camera_min;
-                if(state.player_pos > camera_max) state.player_pos = camera_max;
+                    if(state.player_pos < camera_min) state.player_pos = camera_min;
+                    if(state.player_pos > camera_max) state.player_pos = camera_max;
 
-                switch(state.fire_state) {
-                    .READY => {
-                        if(ray.IsKeyDown(ray.lib.KEY_SPACE)) {
-                            const ac = countActiveBullets(state.player_bullets[0..]);
-                            if(ac < max_bullets) {
-                                state.player_bullets[ac] = Bullet {
-                                    .x = state.player_pos + @divFloor(camera_tex.width, 2),
-                                    .y = screen_height - camera_tex.height,
-                                };
-                                state.fire_state = .TIMEOUT;
+                    switch(state.fire_state) {
+                        .READY => {
+                            if(ray.IsKeyDown(ray.lib.KEY_SPACE)) {
+                                const ac = countActiveBullets(state.player_bullets[0..]);
+                                if(ac < max_bullets) {
+                                    state.player_bullets[ac] = Bullet {
+                                        .x = state.player_pos + @divFloor(camera_tex.width, 2),
+                                        .y = screen_height - camera_tex.height,
+                                    };
+                                    state.fire_state = .TIMEOUT;
+                                }
+                            }
+                        },
+                        .TIMEOUT => {
+                            state.fire_timeout += ray.GetFrameTime();
+                            if (state.fire_timeout > bullet_timeout) {
+                                state.fire_state = .READY;
+                                state.fire_timeout = 0.0;
                             }
                         }
-                    },
-                    .TIMEOUT => {
-                        state.fire_timeout += ray.GetFrameTime();
-                        if (state.fire_timeout > bullet_timeout) {
-                            state.fire_state = .READY;
-                            state.fire_timeout = 0.0;
-                        }
+                    }
+                },
+                .WON, .LOST => {
+                    if(ray.IsKeyPressed(ray.lib.KEY_SPACE)) {
+                        resetGame(&state, player_starting_pos);
                     }
                 }
             }
 
             {  // update faces
-                state.face_pos += face_speed * state.face_direction;
+                state.face_pos += face_speed * (1 - (2 * state.face_direction));
 
-                if(state.face_direction == 1
+                if(state.face_direction == 0
                        and state.face_pos > face_x_max) {
-                    state.face_direction = -1;
+                    state.face_direction = 1; // reverse
                     state.face_pos = face_x_max;
-                } else if(state.face_direction == -1
+                } else if(state.face_direction == 1
                               and state.face_pos < 0) {
-                    state.face_direction = 1;
+                    state.face_direction = 0;
                     state.face_pos = 0;
+                }
+
+                var lost = true;
+                for(state.face_states) |s| {
+                    if(s == .ALIVE) {
+                        lost = false;
+                        break;
+                    }
+                }
+                if(lost) {
+                    state.condition = .WON;
                 }
             }
 
@@ -308,4 +341,9 @@ fn countActiveBullets(bulls: []Bullet) usize {
         } else count += 1;
     }
     return count;
+}
+
+fn resetGame(s: *GameState, player_start: c_int) void {
+    @memset(@ptrCast([*]u8, s), 0, @sizeOf(GameState));
+    s.player_pos = player_start;
 }
