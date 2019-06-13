@@ -273,12 +273,6 @@ pub fn main() void {
                             const face_y_end = xy.y + face_height;
                             const bull_x_end = bull.x + bullet_width;
                             const bull_y_end = bull.y + bullet_height;
-                            // const col_pred =
-                            //     ((face_x_end < bull.x and bull.x > xy.x)
-                            //          or (bull_x_end > xy.x and bull_x_end < face_x_end))
-                            //     and
-                            //     ((bull.y < face_y_end and bull.y > xy.y)
-                            //          or (bull_y_end > xy.y and bull_y_end < face_y_end));
                             const col_pred = !(
                                 xy.x > bull_x_end or
                                 face_x_end < bull.x or
