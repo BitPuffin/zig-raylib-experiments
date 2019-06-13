@@ -191,10 +191,10 @@ pub fn main() void {
             // update player
             switch(state.condition ) {
                 .PLAYING => {
-                    if(ray.IsKeyDown(ray.lib.KEY_LEFT)) {
+                    if(ray.IsKeyDown(ray.KEY_LEFT)) {
                         state.player_pos -= camera_speed;
                     }
-                    if(ray.IsKeyDown(ray.lib.KEY_RIGHT)) {
+                    if(ray.IsKeyDown(ray.KEY_RIGHT)) {
                         state.player_pos += camera_speed;
                     }
 
@@ -203,7 +203,7 @@ pub fn main() void {
 
                     switch(state.fire_state) {
                         .READY => {
-                            if(ray.IsKeyDown(ray.lib.KEY_SPACE)) {
+                            if(ray.IsKeyDown(ray.KEY_SPACE)) {
                                 const ac = countActiveBullets(state.player_bullets[0..]);
                                 if(ac < max_bullets) {
                                     state.player_bullets[ac] = Bullet {
@@ -224,7 +224,7 @@ pub fn main() void {
                     }
                 },
                 .WON, .LOST => {
-                    if(ray.IsKeyPressed(ray.lib.KEY_SPACE)) {
+                    if(ray.IsKeyPressed(ray.KEY_SPACE)) {
                         resetGame(&state, player_starting_pos);
                     }
                 }
@@ -289,7 +289,7 @@ pub fn main() void {
             }
 
             {   // update debug
-                if(ray.IsKeyPressed(ray.lib.KEY_D)) {
+                if(ray.IsKeyPressed(ray.KEY_D)) {
                     debug_drawing = !debug_drawing;
                 }
             }
