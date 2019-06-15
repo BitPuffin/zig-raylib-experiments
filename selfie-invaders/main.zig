@@ -4,10 +4,6 @@ const warn = std.debug.warn;
 
 const ray = @import("ray");
 
-// const c = @cImport({
-//     @cInclude("");
-// });
-
 const screen_width = 1280;
 const screen_height = 960;
 
@@ -54,17 +50,30 @@ const GameCondition = enum {
     LOST,
 };
 
+const Fire = struct {
+    state: FireState,
+    timeout: f64,
+};
+
+const Player = struct {
+    bullets: [max_bullets]Bullet,
+    fire: Fire,
+    pos: c_int,
+};
+
+const Face = struct {
+    states: [face_count]FaceState,
+    death_timeout: [face_count]f64,
+    bullets: [max_face_bullets]Bullet,
+    fire: Fire,
+    pos: c_int,
+    direction: c_int,
+};
+
 const GameState = struct {
     condition: GameCondition,
-    face_states: [face_count]FaceState,
-    time_since_deaths: [face_count]f64,
-    player_bullets: [max_bullets]Bullet,
-    face_bullets: [max_face_bullets]Bullet,
-    fire_state: FireState,
-    fire_timeout: f64,
-    player_pos: c_int, // x axis only
-    face_pos: c_int,
-    face_direction: c_int,
+    player: Player,
+    face: Face,
 };
 
 pub fn main() void {
@@ -78,6 +87,8 @@ pub fn main() void {
 
     var state: GameState = undefined;
     resetGame(&state, player_starting_pos);
+    var player = &state.player;
+    var face = &state.face;
 
     var debug_drawing = false;
 
@@ -115,20 +126,20 @@ pub fn main() void {
 
             // draw player
             ray.DrawTexture(camera_tex,
-                            state.player_pos,
+                            player.pos,
                             player_y,
                             ray.WHITE);
             
             {   // draw faces
-                for(state.face_states) |s, idx| {
+                for(face.states) |s, idx| {
                     if(s == FaceState.ALIVE) {
                         const xy = getFaceXY(idx,
-                                             state.face_pos,
+                                             face.pos,
                                              face_width,
                                              face_height);
                         ray.DrawTexture(
                             weary_face_tex,
-                            xy.x, //state.face_pos + face_padding + xOffset,
+                            xy.x, //face_pos + face_padding + xOffset,
                             xy.y,
                             ray.WHITE);
                     }
@@ -136,7 +147,7 @@ pub fn main() void {
             }
 
             {   // draw player bullets
-                for(state.player_bullets) |bull| {
+                for(player.bullets) |bull| {
                     if (isBulletClear(bull)) break;
                     ray.DrawRectangle(bull.x,
                                       bull.y,
@@ -149,7 +160,11 @@ pub fn main() void {
             switch(state.condition) {
                 .PLAYING => {},
                 .WON => {
-                    ray.DrawText(c"Congratulations! (space for reset)", 50, 100, 14, ray.BLACK);
+                    ray.DrawText(c"Congratulations! (space for reset)",
+                                 50,
+                                 100,
+                                 32,
+                                 ray.BLACK);
                 },
                 .LOST => {}
             }
@@ -166,14 +181,14 @@ pub fn main() void {
                              screen_width,
                              camera_collision_zone,
                              ray.GREEN);
-                ray.DrawRectangleLines(state.player_pos + camera_hitbox_shrink_x,
+                ray.DrawRectangleLines(player.pos + camera_hitbox_shrink_x,
                                        player_y + camera_hitbox_shrink_y,
                                        camera_tex.width - camera_hitbox_shrink_x*2,
                                        camera_tex.height - camera_hitbox_shrink_x*2,
                                        ray.PURPLE);
-                for(state.face_states) |s, idx| {
+                for(face.states) |s, idx| {
                     if(s == .ALIVE) {
-                        const xy = getFaceXY(idx, state.face_pos, face_width, face_height);
+                        const xy = getFaceXY(idx, face.pos, face_width, face_height);
                         ray.DrawRectangleLines(
                             xy.x, //(face_padding + face_width) * col,
                             xy.y,
@@ -192,33 +207,33 @@ pub fn main() void {
             switch(state.condition ) {
                 .PLAYING => {
                     if(ray.IsKeyDown(ray.KEY_LEFT)) {
-                        state.player_pos -= camera_speed;
+                        player.pos -= camera_speed;
                     }
                     if(ray.IsKeyDown(ray.KEY_RIGHT)) {
-                        state.player_pos += camera_speed;
+                        player.pos += camera_speed;
                     }
 
-                    if(state.player_pos < camera_min) state.player_pos = camera_min;
-                    if(state.player_pos > camera_max) state.player_pos = camera_max;
+                    if(player.pos < camera_min) player.pos = camera_min;
+                    if(player.pos > camera_max) player.pos = camera_max;
 
-                    switch(state.fire_state) {
+                    switch(player.fire.state) {
                         .READY => {
                             if(ray.IsKeyDown(ray.KEY_SPACE)) {
-                                const ac = countActiveBullets(state.player_bullets[0..]);
+                                const ac = countActiveBullets(player.bullets[0..]);
                                 if(ac < max_bullets) {
-                                    state.player_bullets[ac] = Bullet {
-                                        .x = state.player_pos + @divFloor(camera_tex.width, 2),
+                                    player.bullets[ac] = Bullet {
+                                        .x = player.pos + @divFloor(camera_tex.width, 2),
                                         .y = screen_height - camera_tex.height,
                                     };
-                                    state.fire_state = .TIMEOUT;
+                                    player.fire.state = .TIMEOUT;
                                 }
                             }
                         },
                         .TIMEOUT => {
-                            state.fire_timeout += ray.GetFrameTime();
-                            if (state.fire_timeout > bullet_timeout) {
-                                state.fire_state = .READY;
-                                state.fire_timeout = 0.0;
+                            player.fire.timeout += ray.GetFrameTime();
+                            if (player.fire.timeout > bullet_timeout) {
+                                player.fire.state = .READY;
+                                player.fire.timeout = 0.0;
                             }
                         }
                     }
@@ -231,20 +246,20 @@ pub fn main() void {
             }
 
             {  // update faces
-                state.face_pos += face_speed * (1 - (2 * state.face_direction));
+                face.pos += face_speed * (1 - (2 * face.direction));
 
-                if(state.face_direction == 0
-                       and state.face_pos > face_x_max) {
-                    state.face_direction = 1; // reverse
-                    state.face_pos = face_x_max;
-                } else if(state.face_direction == 1
-                              and state.face_pos < 0) {
-                    state.face_direction = 0;
-                    state.face_pos = 0;
+                if(face.direction == 0
+                       and face.pos > face_x_max) {
+                    face.direction = 1; // reverse
+                    face.pos = face_x_max;
+                } else if(face.direction == 1
+                              and face.pos < 0) {
+                    face.direction = 0;
+                    face.pos = 0;
                 }
 
                 var lost = true;
-                for(state.face_states) |s| {
+                for(face.states) |s| {
                     if(s == .ALIVE) {
                         lost = false;
                         break;
@@ -256,17 +271,17 @@ pub fn main() void {
             }
 
             {   // update player bullets
-                for(state.player_bullets) |*bull, idx| {
+                for(player.bullets) |*bull, idx| {
                     if(isBulletClear(bull.*)) break;
                     bull.y -= bullet_speed;
                     if(bull.y < -100) {
-                        freeBulletAt(state.player_bullets[0..], idx);
+                        freeBulletAt(player.bullets[0..], idx);
                     }
                     if(bull.y < face_collision_zone) {
-                        for(state.face_states) |*fs, i| {
+                        for(face.states) |*fs, i| {
                             if(fs.* != .ALIVE) continue;
                             const xy = getFaceXY(i,
-                                                 state.face_pos,
+                                                 face.pos,
                                                  face_width,
                                                  face_height);
                             const face_x_end = xy.x + face_width;
@@ -281,7 +296,7 @@ pub fn main() void {
                             );
                             if(col_pred) {
                                 fs.* = .DYING;
-                                freeBulletAt(state.player_bullets[0..], idx);
+                                freeBulletAt(player.bullets[0..], idx);
                             }
                         }
                     }
@@ -339,5 +354,5 @@ fn countActiveBullets(bulls: []Bullet) usize {
 
 fn resetGame(s: *GameState, player_start: c_int) void {
     @memset(@ptrCast([*]u8, s), 0, @sizeOf(GameState));
-    s.player_pos = player_start;
+    s.player.pos = player_start;
 }
