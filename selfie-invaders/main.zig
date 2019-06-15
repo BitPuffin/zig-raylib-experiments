@@ -6,6 +6,12 @@ const ray = @import("ray");
 
 const screen_width = 1280;
 const screen_height = 960;
+const screen_border_padding = 30;
+const MinMax = struct { min: c_int, max: c_int };
+const screen_padded_border = MinMax {
+    .min = 0 + screen_border_padding,
+    .max = screen_width - screen_border_padding,
+};
 
 const face_count = 16;
 const face_padding = 30;
@@ -95,7 +101,6 @@ pub fn main() void {
     const weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
     const face_width = weary_face_tex.width;
     const face_height = weary_face_tex.height;
-    var face_min_max = calcFaceMinMax(face_width, face.states[0..]);
     const face_collision_zone = block: {
         comptime var row_count = face_count / face_per_row;
         if(face_count % face_per_row != 0) row_count += 1;
@@ -248,21 +253,22 @@ pub fn main() void {
             {  // update faces
                 face.pos += face_speed * (1 - (2 * face.direction));
 
-                if(face.direction == 0
-                       and face.pos > face_min_max.max) {
-                    face.direction = 1; // reverse
-                    face.pos = face_min_max.max;
-                } else if(face.direction == 1
-                              and face.pos < face_min_max.min) {
-                    face.direction = 0;
-                    face.pos = face_min_max.min;
-                }
-
                 var lost = true;
-                for(face.states) |s| {
+                for(face.states) |s, i| {
                     if(s == .ALIVE) {
                         lost = false;
-                        break;
+
+                        var xy = getFaceXY(i, face.pos, face_width, face_height);
+
+                        if(xy.x < screen_padded_border.min) {
+                            face.pos += screen_padded_border.min - xy.x;
+                            face.direction = 0;
+                        }
+                        const rightx = xy.x + face_width;
+                        if(rightx > screen_padded_border.max) {
+                            face.pos -= rightx - screen_padded_border.max;
+                            face.direction = 1;
+                        }
                     }
                 }
                 if(lost) {
@@ -297,7 +303,6 @@ pub fn main() void {
                             if(col_pred) {
                                 fs.* = .DYING;
                                 freeBulletAt(player.bullets[0..], idx);
-                                face_min_max = calcFaceMinMax(face_width, face.states[0..]);
                             }
                         }
                     }
@@ -356,41 +361,4 @@ fn countActiveBullets(bulls: []Bullet) usize {
 fn resetGame(s: *GameState, player_start: c_int) void {
     @memset(@ptrCast([*]u8, s), 0, @sizeOf(GameState));
     s.player.pos = player_start;
-}
-
-const MinMaxPos = struct {
-    min: c_int,
-    max: c_int,
-};
-
-fn calcFaceMinMax(face_width: c_int, fs: []FaceState) MinMaxPos {
-    var row_idx: c_int = 0;
-    var max_idx: c_int = 0;
-    var min_idx: c_int = face_per_row;
-
-    {
-        var row_min_idx: c_int = 0;
-        var found_row_min = false;
-        for(fs) |s| {
-            if(s == .ALIVE) {
-                if(row_idx > max_idx) max_idx = row_idx;
-                if(!found_row_min and row_idx < min_idx) {
-                    min_idx = row_idx;
-                }
-                found_row_min = true;
-            }
-            row_idx += 1;
-            if(row_idx == face_per_row) {
-                row_idx = 0;
-            }
-        }
-    }
-
-    var result: MinMaxPos = undefined;
-    var w = face_width + face_padding;
-    result.max = w * (max_idx + 1);
-    result.max += face_padding;
-    result.max = screen_width - result.max;
-    result.min = -(w * min_idx);
-    return result;
 }
