@@ -33,7 +33,7 @@ const camera_hitbox_shrink_x = 10;
 const screen_offset = 100;
 const camera_min = 0 + screen_offset;
 
-const FaceState = packed enum(u2) {
+const FaceState = enum {
     ALIVE,
     DYING,
     DEAD
