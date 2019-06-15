@@ -95,8 +95,7 @@ pub fn main() void {
     const weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
     const face_width = weary_face_tex.width;
     const face_height = weary_face_tex.height;
-    var face_x_max = calcFaceMaxX(face_width, face.states[0..]);
-    var face_x_min = calcFaceMinX(face_width, face.states[0..]);
+    var face_min_max = calcFaceMinMax(face_width, face.states[0..]);
     const face_collision_zone = block: {
         comptime var row_count = face_count / face_per_row;
         if(face_count % face_per_row != 0) row_count += 1;
@@ -250,13 +249,13 @@ pub fn main() void {
                 face.pos += face_speed * (1 - (2 * face.direction));
 
                 if(face.direction == 0
-                       and face.pos > face_x_max) {
+                       and face.pos > face_min_max.max) {
                     face.direction = 1; // reverse
-                    face.pos = face_x_max;
+                    face.pos = face_min_max.max;
                 } else if(face.direction == 1
-                              and face.pos < face_x_min) {
+                              and face.pos < face_min_max.min) {
                     face.direction = 0;
-                    face.pos = face_x_min;
+                    face.pos = face_min_max.min;
                 }
 
                 var lost = true;
@@ -298,8 +297,7 @@ pub fn main() void {
                             if(col_pred) {
                                 fs.* = .DYING;
                                 freeBulletAt(player.bullets[0..], idx);
-                                face_x_max = calcFaceMaxX(face_width, face.states[0..]);
-                                face_x_min = calcFaceMinX(face_width, face.states[0..]);
+                                face_min_max = calcFaceMinMax(face_width, face.states[0..]);
                             }
                         }
                     }
@@ -360,46 +358,39 @@ fn resetGame(s: *GameState, player_start: c_int) void {
     s.player.pos = player_start;
 }
 
-fn calcFaceMaxX(face_width: c_int, fs: []FaceState) c_int {
-    var max_idx :c_int = 0;
-    var idx:c_int = 0;
-    for(fs) |s, all_idx| {
-        if(all_idx % face_per_row == 0) idx = 0;
-        if(s == .ALIVE and idx > max_idx) {
-            max_idx = idx;
-        }
-        idx += 1;
-    }
+const MinMaxPos = struct {
+    min: c_int,
+    max: c_int,
+};
 
-    var result: c_int = face_width + face_padding;
-    result *= max_idx + 1;
-    result += face_padding;
-    result = screen_width - result;
-
-    return result;
-}
-fn calcFaceMinX(face_width: c_int, fs: []FaceState) c_int {
+fn calcFaceMinMax(face_width: c_int, fs: []FaceState) MinMaxPos {
+    var row_idx: c_int = 0;
+    var max_idx: c_int = 0;
     var min_idx: c_int = face_per_row;
-    var row_min_idx: c_int = 0;
-    var idx: c_int = 0;
-    var row_finish = false;
-    for(fs) |s, all_idx| {
-        if(all_idx != 0 and all_idx % face_per_row == 0) {
-            idx = 0;
-            row_finish = false;
-            if(row_min_idx < min_idx) {
-                min_idx = row_min_idx;
+
+    {
+        var row_min_idx: c_int = 0;
+        var found_row_min = false;
+        for(fs) |s| {
+            if(s == .ALIVE) {
+                if(row_idx > max_idx) max_idx = row_idx;
+                if(!found_row_min and row_idx < min_idx) {
+                    min_idx = row_idx;
+                }
+                found_row_min = true;
+            }
+            row_idx += 1;
+            if(row_idx == face_per_row) {
+                row_idx = 0;
             }
         }
-        if(row_finish) continue;
-        if(s == .ALIVE and idx >= row_min_idx) {
-            row_min_idx = idx;
-            row_finish = true;
-        }
-        idx += 1;
     }
 
-    var result: c_int = face_width + face_padding;
-    result *= min_idx;
-    return -result;
+    var result: MinMaxPos = undefined;
+    var w = face_width + face_padding;
+    result.max = w * (max_idx + 1);
+    result.max += face_padding;
+    result.max = screen_width - result.max;
+    result.min = -(w * min_idx);
+    return result;
 }
