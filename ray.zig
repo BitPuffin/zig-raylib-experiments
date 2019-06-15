@@ -12,33 +12,33 @@ pub fn CLiteral(r: u8, g: u8, b: u8, a: u8) Color {
 }
 // pub const LIGHTGRAY = 
 
-pub const LIGHTGRAY = CLiteral(200, 200, 200, 255);   // Light Gray
-pub const GRAY =      CLiteral(130, 130, 130, 255);   // Gray
-pub const DARKGRAY =  CLiteral(80, 80, 80, 255);      // Dark Gray
-pub const YELLOW =    CLiteral(253, 249, 0, 255);     // Yellow
-pub const GOLD =      CLiteral(255, 203, 0, 255);     // Gold
-pub const ORANGE =    CLiteral(255, 161, 0, 255);     // Orange
-pub const PINK =      CLiteral(255, 109, 194, 255);   // Pink
-pub const RED =       CLiteral(230, 41, 55, 255);     // Red
-pub const MAROON =    CLiteral(190, 33, 55, 255);     // Maroon
-pub const GREEN =     CLiteral(0, 228, 48, 255);      // Green
-pub const LIME =      CLiteral(0, 158, 47, 255);      // Lime
-pub const DARKGREEN = CLiteral(0, 117, 44, 255);      // Dark Green
-pub const SKYBLUE =   CLiteral(102, 191, 255, 255);   // Sky Blue
-pub const BLUE =      CLiteral(0, 121, 241, 255);     // Blue
-pub const DARKBLUE =  CLiteral(0, 82, 172, 255);      // Dark Blue
-pub const PURPLE =    CLiteral(200, 122, 255, 255);   // Purple
-pub const VIOLET =    CLiteral(135, 60, 190, 255);    // Violet
-pub const DARKPURPLE =CLiteral(112, 31, 126, 255);    // Dark Purple
-pub const BEIGE =     CLiteral(211, 176, 131, 255);   // Beige
-pub const BROWN =     CLiteral(127, 106, 79, 255);    // Brown
-pub const DARKBROWN = CLiteral(76, 63, 47, 255);      // Dark Brown
-
-pub const WHITE =     CLiteral(255, 255, 255, 255);   // White
-pub const BLACK =     CLiteral(0, 0, 0, 255);         // Black
-pub const BLANK =     CLiteral(0, 0, 0, 0);           // Blank (Transparent)
-pub const MAGENTA =   CLiteral(255, 0, 255, 255);     // Magenta
-pub const RAYWHITE =  CLiteral(245, 245, 245, 255);   // My own White (raylib logo)
+pub const LIGHTGRAY  = CLiteral(200, 200, 200, 255);   // Light Gray
+pub const GRAY       = CLiteral(130, 130, 130, 255);   // Gray
+pub const DARKGRAY   = CLiteral(80, 80, 80, 255);      // Dark Gray
+pub const YELLOW     = CLiteral(253, 249, 0, 255);     // Yellow
+pub const GOLD       = CLiteral(255, 203, 0, 255);     // Gold
+pub const ORANGE     = CLiteral(255, 161, 0, 255);     // Orange
+pub const PINK       = CLiteral(255, 109, 194, 255);   // Pink
+pub const RED        = CLiteral(230, 41, 55, 255);     // Red
+pub const MAROON     = CLiteral(190, 33, 55, 255);     // Maroon
+pub const GREEN      = CLiteral(0, 228, 48, 255);      // Green
+pub const LIME       = CLiteral(0, 158, 47, 255);      // Lime
+pub const DARKGREEN  = CLiteral(0, 117, 44, 255);      // Dark Green
+pub const SKYBLUE    = CLiteral(102, 191, 255, 255);   // Sky Blue
+pub const BLUE       = CLiteral(0, 121, 241, 255);     // Blue
+pub const DARKBLUE   = CLiteral(0, 82, 172, 255);      // Dark Blue
+pub const PURPLE     = CLiteral(200, 122, 255, 255);   // Purple
+pub const VIOLET     = CLiteral(135, 60, 190, 255);    // Violet
+pub const DARKPURPLE = CLiteral(112, 31, 126, 255);    // Dark Purple
+pub const BEIGE      = CLiteral(211, 176, 131, 255);   // Beige
+pub const BROWN      = CLiteral(127, 106, 79, 255);    // Brown
+pub const DARKBROWN  = CLiteral(76, 63, 47, 255);      // Dark Brown
+                       
+pub const WHITE      = CLiteral(255, 255, 255, 255);   // White
+pub const BLACK      = CLiteral(0, 0, 0, 255);         // Black
+pub const BLANK      = CLiteral(0, 0, 0, 0);           // Blank (Transparent)
+pub const MAGENTA    = CLiteral(255, 0, 255, 255);     // Magenta
+pub const RAYWHITE   = CLiteral(245, 245, 245, 255);   // My own White (raylib logo)
 
 
 // // window related functions
