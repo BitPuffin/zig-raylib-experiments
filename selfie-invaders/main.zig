@@ -361,18 +361,18 @@ fn resetGame(s: *GameState, player_start: c_int) void {
 }
 
 fn calcFaceMaxX(face_width: c_int, fs: []FaceState) c_int {
-    var xMostIdx:c_int = 0;
+    var max_idx :c_int = 0;
     var idx:c_int = 0;
     for(fs) |s, all_idx| {
         if(all_idx % face_per_row == 0) idx = 0;
-        if(s == .ALIVE and idx > xMostIdx) {
-            xMostIdx = idx;
+        if(s == .ALIVE and idx > max_idx) {
+            max_idx = idx;
         }
         idx += 1;
     }
 
     var result: c_int = face_width + face_padding;
-    result *= xMostIdx + 1;
+    result *= max_idx + 1;
     result += face_padding;
     result = screen_width - result;
     
