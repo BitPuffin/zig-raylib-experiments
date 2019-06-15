@@ -157,16 +157,22 @@ pub fn main() void {
                 }
             }
 
-            switch(state.condition) {
-                .PLAYING => {},
-                .WON => {
-                    ray.DrawText(c"Congratulations! (space for reset)",
-                                 50,
-                                 100,
-                                 32,
-                                 ray.BLACK);
-                },
-                .LOST => {}
+            {   // display status message
+                const fns = struct {
+                    fn drawStatus(str: [*]const u8) void {
+                        ray.DrawText(str, 50, 100, 32, ray.BLACK);
+
+                    }
+                };
+                switch(state.condition) {
+                    .PLAYING => {},
+                    .WON => {
+                        fns.drawStatus(c"Congratulations! (space for reset)");
+                    },
+                    .LOST => {
+                        fns.drawStatus(c"Too bad! Try again! (space for reset)");
+                    }
+                }
             }
 
             if(debug_drawing) {
