@@ -375,7 +375,7 @@ fn calcFaceMaxX(face_width: c_int, fs: []FaceState) c_int {
     result *= max_idx + 1;
     result += face_padding;
     result = screen_width - result;
-    
+
     return result;
 }
 fn calcFaceMinX(face_width: c_int, fs: []FaceState) c_int {
