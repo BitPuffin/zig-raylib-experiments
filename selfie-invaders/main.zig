@@ -4,14 +4,23 @@ const warn = std.debug.warn;
 
 const ray = @import("ray");
 
-const screen_width = 1280;
-const screen_height = 960;
-const screen_border_padding = 30;
-const MinMax = struct { min: c_int, max: c_int };
-const screen_padded_border = MinMax {
-    .min = 0 + screen_border_padding,
-    .max = screen_width - screen_border_padding,
+const Window = struct {
+    const width = 1280;
+    const height = 960;
+    const title = c"Selfie Invaders";
+    const border_padding = 30;
+    const padded_border = MinMax {
+        .min = 0 + border_padding,
+        .max = Window.width - Window.border_padding,
+    };
+
+    pub fn init() void {
+        ray.InitWindow(width, height, title);
+        ray.SetTargetFPS(60);
+    }
 };
+
+const MinMax = struct { min: c_int, max: c_int };
 
 const face_count = 16;
 const face_padding = 30;
@@ -82,14 +91,22 @@ const GameState = struct {
     face: Face,
 };
 
-pub fn main() void {
-    ray.InitWindow(screen_width, screen_height, c"Selfie Invaders");
-    ray.SetTargetFPS(60);
+const Assets = struct {
+    camera: ray.Texture,
+    weary_face : ray.Texture,
+};
 
-    var camera_tex = ray.LoadTexture(c"selfie-invaders/camera.png");
-    const player_y = screen_height - camera_tex.height - face_padding;
-    const camera_max = screen_width - (camera_tex.width + screen_offset);
-    const player_starting_pos = @divFloor((screen_width - camera_tex.width), 2);
+pub fn main() void {
+    Window.init();
+
+    const assets = Assets {
+        .camera = ray.LoadTexture(c"selfie-invaders/camera.png"),
+        .weary_face = ray.LoadTexture(c"selfie-invaders/weary-face.png"),
+    };
+
+    const player_y = Window.height - assets.camera.height - Window.border_padding;
+    const camera_max = Window.width - (assets.camera.width + screen_offset);
+    const player_starting_pos = @divFloor((Window.width - assets.camera.width), 2);
 
     var state: GameState = undefined;
     resetGame(&state, player_starting_pos);
@@ -98,9 +115,8 @@ pub fn main() void {
 
     var debug_drawing = false;
 
-    const weary_face_tex = ray.LoadTexture(c"selfie-invaders/weary-face.png");
-    const face_width = weary_face_tex.width;
-    const face_height = weary_face_tex.height;
+    const face_width = assets.weary_face.width;
+    const face_height = assets.weary_face.height;
     const face_collision_zone = block: {
         comptime var row_count = face_count / face_per_row;
         if(face_count % face_per_row != 0) row_count += 1;
@@ -111,8 +127,8 @@ pub fn main() void {
         break :block y;
     };
     const camera_collision_zone =
-        screen_height
-        - camera_tex.height
+        Window.height
+        - assets.camera.height
         - camera_padding
         + camera_hitbox_shrink_y;
 
@@ -124,7 +140,7 @@ pub fn main() void {
             ray.ClearBackground(ray.RAYWHITE);
 
             // draw player
-            ray.DrawTexture(camera_tex,
+            ray.DrawTexture(assets.camera,
                             player.pos,
                             player_y,
                             ray.WHITE);
@@ -137,7 +153,7 @@ pub fn main() void {
                                              face_width,
                                              face_height);
                         ray.DrawTexture(
-                            weary_face_tex,
+                            assets.weary_face,
                             xy.x, //face_pos + face_padding + xOffset,
                             xy.y,
                             ray.WHITE);
@@ -178,18 +194,18 @@ pub fn main() void {
                 ray.DrawFPS(100,0);
                 ray.DrawLine(0,
                              face_collision_zone,
-                             screen_width,
+                             Window.width,
                              face_collision_zone,
                              ray.GREEN);
                 ray.DrawLine(0,
                              camera_collision_zone,
-                             screen_width,
+                             Window.width,
                              camera_collision_zone,
                              ray.GREEN);
                 ray.DrawRectangleLines(player.pos + camera_hitbox_shrink_x,
                                        player_y + camera_hitbox_shrink_y,
-                                       camera_tex.width - camera_hitbox_shrink_x*2,
-                                       camera_tex.height - camera_hitbox_shrink_x*2,
+                                       assets.camera.width - camera_hitbox_shrink_x*2,
+                                       assets.camera.height - camera_hitbox_shrink_x*2,
                                        ray.PURPLE);
                 for(face.states) |s, idx| {
                     if(s == .ALIVE) {
@@ -227,8 +243,8 @@ pub fn main() void {
                                 const ac = countActiveBullets(player.bullets[0..]);
                                 if(ac < max_bullets) {
                                     player.bullets[ac] = Bullet {
-                                        .x = player.pos + @divFloor(camera_tex.width, 2),
-                                        .y = screen_height - camera_tex.height,
+                                        .x = player.pos + @divFloor(assets.camera.width, 2),
+                                        .y = Window.height - assets.camera.height,
                                     };
                                     player.fire.state = .TIMEOUT;
                                 }
@@ -260,13 +276,13 @@ pub fn main() void {
 
                         var xy = getFaceXY(i, face.pos, face_width, face_height);
 
-                        if(xy.x < screen_padded_border.min) {
-                            face.pos += screen_padded_border.min - xy.x;
+                        if(xy.x < Window.padded_border.min) {
+                            face.pos += Window.padded_border.min - xy.x;
                             face.direction = 0;
                         }
                         const rightx = xy.x + face_width;
-                        if(rightx > screen_padded_border.max) {
-                            face.pos -= rightx - screen_padded_border.max;
+                        if(rightx > Window.padded_border.max) {
+                            face.pos -= rightx - Window.padded_border.max;
                             face.direction = 1;
                         }
                     }
