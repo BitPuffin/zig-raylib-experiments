@@ -198,38 +198,96 @@ pub fn main() void {
             ray.EndDrawing();
         }
 
-        {   // update
-            // update player
+        { // update
             switch(state.condition ) {
                 .PLAYING => {
-                    if(ray.IsKeyDown(ray.KEY_LEFT)) {
-                        player.pos -= camera_speed;
-                    }
-                    if(ray.IsKeyDown(ray.KEY_RIGHT)) {
-                        player.pos += camera_speed;
-                    }
+                    { // update player
+                        if(ray.IsKeyDown(ray.KEY_LEFT)) {
+                            player.pos -= camera_speed;
+                        }
+                        if(ray.IsKeyDown(ray.KEY_RIGHT)) {
+                            player.pos += camera_speed;
+                        }
 
-                    if(player.pos < camera_min) player.pos = camera_min;
-                    if(player.pos > camera_max) player.pos = camera_max;
+                        if(player.pos < camera_min) player.pos = camera_min;
+                        if(player.pos > camera_max) player.pos = camera_max;
 
-                    switch(player.fire.state) {
-                        .READY => {
-                            if(ray.IsKeyDown(ray.KEY_SPACE)) {
-                                const ac = countActiveBullets(player.bullets[0..]);
-                                if(ac < max_bullets) {
-                                    player.bullets[ac] = Bullet {
-                                        .x = player.pos + @divFloor(assets.camera.width, 2),
-                                        .y = Window.height - assets.camera.height,
-                                    };
-                                    player.fire.state = .TIMEOUT;
+                        switch(player.fire.state) {
+                            .READY => {
+                                if(ray.IsKeyDown(ray.KEY_SPACE)) {
+                                    const ac = countActiveBullets(player.bullets[0..]);
+                                    if(ac < max_bullets) {
+                                        player.bullets[ac] = Bullet {
+                                            .x = player.pos + @divFloor(assets.camera.width, 2),
+                                            .y = Window.height - assets.camera.height,
+                                        };
+                                        player.fire.state = .TIMEOUT;
+                                    }
+                                }
+                            },
+                            .TIMEOUT => {
+                                player.fire.timeout += ray.GetFrameTime();
+                                if (player.fire.timeout > bullet_timeout) {
+                                    player.fire.state = .READY;
+                                    player.fire.timeout = 0.0;
                                 }
                             }
-                        },
-                        .TIMEOUT => {
-                            player.fire.timeout += ray.GetFrameTime();
-                            if (player.fire.timeout > bullet_timeout) {
-                                player.fire.state = .READY;
-                                player.fire.timeout = 0.0;
+                        }
+                    }
+
+                    {  // update faces
+                        face.pos += face_speed * (1 - (2 * face.direction));
+
+                        var won = true;
+                        for(face.states) |s, i| {
+                            if(s == .ALIVE) {
+                                won = false;
+
+                                var xy = getFaceXY(i, face.pos, face_width, face_height);
+
+                                if(xy.x < Window.padded_border.min) {
+                                    face.pos += Window.padded_border.min - xy.x;
+                                    face.direction = 0;
+                                }
+                                const rightx = xy.x + face_width;
+                                if(rightx > Window.padded_border.max) {
+                                    face.pos -= rightx - Window.padded_border.max;
+                                    face.direction = 1;
+                                }
+                            }
+                        }
+                        if(won) {
+                            state.condition = .WON;
+                        }
+                    }
+
+                    {   // update player bullets
+                        for(player.bullets) |*bull, idx| {
+                            if(isBulletClear(bull.*)) break;
+                            bull.y -= bullet_speed;
+                            if(bull.y < -100) {
+                                freeBulletAt(player.bullets[0..], idx);
+                            }
+                            for(face.states) |*fs, i| {
+                                if(fs.* != .ALIVE) continue;
+                                const xy = getFaceXY(i,
+                                                     face.pos,
+                                                     face_width,
+                                                     face_height);
+                                const face_x_end = xy.x + face_width;
+                                const face_y_end = xy.y + face_height;
+                                const bull_x_end = bull.x + bullet_width;
+                                const bull_y_end = bull.y + bullet_height;
+                                const col_pred = !(
+                                    xy.x > bull_x_end or
+                                        face_x_end < bull.x or
+                                        xy.y > bull_y_end or
+                                        face_y_end < bull.y
+                                );
+                                if(col_pred) {
+                                    fs.* = .DYING;
+                                    freeBulletAt(player.bullets[0..], idx);
+                                }
                             }
                         }
                     }
@@ -237,63 +295,6 @@ pub fn main() void {
                 .WON, .LOST => {
                     if(ray.IsKeyPressed(ray.KEY_SPACE)) {
                         resetGame(&state, player_starting_pos);
-                    }
-                }
-            }
-
-            {  // update faces
-                face.pos += face_speed * (1 - (2 * face.direction));
-
-                var won = true;
-                for(face.states) |s, i| {
-                    if(s == .ALIVE) {
-                        won = false;
-
-                        var xy = getFaceXY(i, face.pos, face_width, face_height);
-
-                        if(xy.x < Window.padded_border.min) {
-                            face.pos += Window.padded_border.min - xy.x;
-                            face.direction = 0;
-                        }
-                        const rightx = xy.x + face_width;
-                        if(rightx > Window.padded_border.max) {
-                            face.pos -= rightx - Window.padded_border.max;
-                            face.direction = 1;
-                        }
-                    }
-                }
-                if(won) {
-                    state.condition = .WON;
-                }
-            }
-
-            {   // update player bullets
-                for(player.bullets) |*bull, idx| {
-                    if(isBulletClear(bull.*)) break;
-                    bull.y -= bullet_speed;
-                    if(bull.y < -100) {
-                        freeBulletAt(player.bullets[0..], idx);
-                    }
-                    for(face.states) |*fs, i| {
-                        if(fs.* != .ALIVE) continue;
-                        const xy = getFaceXY(i,
-                                             face.pos,
-                                             face_width,
-                                             face_height);
-                        const face_x_end = xy.x + face_width;
-                        const face_y_end = xy.y + face_height;
-                        const bull_x_end = bull.x + bullet_width;
-                        const bull_y_end = bull.y + bullet_height;
-                        const col_pred = !(
-                            xy.x > bull_x_end or
-                                face_x_end < bull.x or
-                                xy.y > bull_y_end or
-                                face_y_end < bull.y
-                        );
-                        if(col_pred) {
-                            fs.* = .DYING;
-                            freeBulletAt(player.bullets[0..], idx);
-                        }
                     }
                 }
             }
