@@ -117,21 +117,6 @@ pub fn main() void {
 
     const face_width = assets.weary_face.width;
     const face_height = assets.weary_face.height;
-    const face_collision_zone = block: {
-        comptime var row_count = face_count / face_per_row;
-        if(face_count % face_per_row != 0) row_count += 1;
-
-        const face_and_padding = face_height + face_padding;
-        const y = row_count * face_and_padding;
-            
-        break :block y;
-    };
-    const camera_collision_zone =
-        Window.height
-        - assets.camera.height
-        - camera_padding
-        + camera_hitbox_shrink_y;
-
     const fnt = ray.GetFontDefault();
 
     while (!ray.WindowShouldClose()) {
@@ -192,16 +177,6 @@ pub fn main() void {
 
             if(debug_drawing) {
                 ray.DrawFPS(100,0);
-                ray.DrawLine(0,
-                             face_collision_zone,
-                             Window.width,
-                             face_collision_zone,
-                             ray.GREEN);
-                ray.DrawLine(0,
-                             camera_collision_zone,
-                             Window.width,
-                             camera_collision_zone,
-                             ray.GREEN);
                 ray.DrawRectangleLines(player.pos + camera_hitbox_shrink_x,
                                        player_y + camera_hitbox_shrink_y,
                                        assets.camera.width - camera_hitbox_shrink_x*2,
@@ -299,27 +274,25 @@ pub fn main() void {
                     if(bull.y < -100) {
                         freeBulletAt(player.bullets[0..], idx);
                     }
-                    if(bull.y < face_collision_zone) {
-                        for(face.states) |*fs, i| {
-                            if(fs.* != .ALIVE) continue;
-                            const xy = getFaceXY(i,
-                                                 face.pos,
-                                                 face_width,
-                                                 face_height);
-                            const face_x_end = xy.x + face_width;
-                            const face_y_end = xy.y + face_height;
-                            const bull_x_end = bull.x + bullet_width;
-                            const bull_y_end = bull.y + bullet_height;
-                            const col_pred = !(
-                                xy.x > bull_x_end or
+                    for(face.states) |*fs, i| {
+                        if(fs.* != .ALIVE) continue;
+                        const xy = getFaceXY(i,
+                                             face.pos,
+                                             face_width,
+                                             face_height);
+                        const face_x_end = xy.x + face_width;
+                        const face_y_end = xy.y + face_height;
+                        const bull_x_end = bull.x + bullet_width;
+                        const bull_y_end = bull.y + bullet_height;
+                        const col_pred = !(
+                            xy.x > bull_x_end or
                                 face_x_end < bull.x or
                                 xy.y > bull_y_end or
                                 face_y_end < bull.y
-                            );
-                            if(col_pred) {
-                                fs.* = .DYING;
-                                freeBulletAt(player.bullets[0..], idx);
-                            }
+                        );
+                        if(col_pred) {
+                            fs.* = .DYING;
+                            freeBulletAt(player.bullets[0..], idx);
                         }
                     }
                 }
