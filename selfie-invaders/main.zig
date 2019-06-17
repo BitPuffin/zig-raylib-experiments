@@ -117,7 +117,6 @@ pub fn main() void {
 
     const face_width = assets.weary_face.width;
     const face_height = assets.weary_face.height;
-    const fnt = ray.GetFontDefault();
 
     while (!ray.WindowShouldClose()) {
         {   // drawing
