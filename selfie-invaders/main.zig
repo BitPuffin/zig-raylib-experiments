@@ -238,10 +238,11 @@ pub fn main() void {
                     {  // update faces
                         face.pos += face_speed * (1 - (2 * face.direction));
 
-                        var won = true;
+                        const old_condition = state.condition;
+                        state.condition = .WON; // attempt to win
                         for(face.states) |s, i| {
                             if(s == .ALIVE) {
-                                won = false;
+                                state.condition = old_condition; // we didn't win
 
                                 var xy = getFaceXY(i, face.pos, face_width, face_height);
 
@@ -255,9 +256,6 @@ pub fn main() void {
                                     face.direction = 1;
                                 }
                             }
-                        }
-                        if(won) {
-                            state.condition = .WON;
                         }
                     }
 
