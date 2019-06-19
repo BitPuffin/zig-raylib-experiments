@@ -27,7 +27,7 @@ pub fn build(b: *Builder) void {
         // }
 
         // exe.addPackagePath("zang", "zang/src/zang.zig");
-        const raylibFlags = [][]const u8{"-std=c99",
+        const raylibFlags = [_][]const u8{"-std=c99",
                                          "-DPLATFORM=DESKTOP",
                                          "-DPLATFORM_DESKTOP",
                                          "-DGRAPHICS=GRAPHICS_API_OPENGL_33",
