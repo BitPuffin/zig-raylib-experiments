@@ -1,6 +1,8 @@
 const std = @import("std");
 const mem = std.mem;
 const warn = std.debug.warn;
+const rand = std.rand;
+var prng = rand.DefaultPrng.init(0);
 
 const ray = @import("ray");
 const easings = @cImport({ @cInclude("easings.h"); });
@@ -61,14 +63,39 @@ const GameCondition = enum {
 };
 
 const Fire = struct {
-    const timeout_limit = 0.3;
     state: FireState,
     timeout: f64,
+    cooldown: f64,
+
+    pub fn tick(this: *Fire) void {
+        this.timeout += ray.GetFrameTime();
+        if (this.timeout > this.cooldown) {
+            this.state = .READY;
+            this.timeout = 0.0;
+        }
+    }
+    fn attemptFire(
+        this: *Fire,
+        bullets: []Bullet,
+        cooldown: f64,
+        x: c_int,
+        y: c_int,
+        w: c_int) void
+    {
+        const ac = countBullets(bullets);
+        if(ac < bullets.len) {
+            const mid = x + @divFloor(w, 2);
+            bullets[ac] = Bullet { .x = mid, .y = y, };
+            this.state = .TIMEOUT;
+            this.cooldown = cooldown;
+        }
+    }
 };
 
 const Player = struct {
     bullets: [8]Bullet,
     fire: Fire,
+    const fire_cooldown = 0.3;
     pos: c_int,
 };
 
@@ -76,6 +103,8 @@ const Face = struct {
     states: [face_count]FaceState,
     death_time: [face_count]f64,
     bullets: [4]Bullet,
+    const minimum_fire_cooldown = 1.5;
+    const maximum_fire_cooldown = 7.0;
     fire: Fire,
     pos: c_int,
     direction: c_int,
@@ -204,29 +233,17 @@ pub fn main() void
                 switch(player.fire.state) {
                     .READY => {
                         if(ray.IsKeyDown(ray.KEY_SPACE)) {
-                            const ac = countBullets(player.bullets[0..]);
-                            if(ac < player.bullets.len) {
-                                const player_mid =
-                                    player.pos +
-                                    @divFloor(assets.camera.width, 2);
-                                const bullet_start_y =
-                                    Window.height -
-                                    assets.camera.height;
-                                player.bullets[ac] = Bullet {
-                                    .x = player_mid,
-                                    .y = bullet_start_y,
-                                };
+                            player.fire.attemptFire(
+                                player.bullets[0..],
+                                Player.fire_cooldown,
+                                player.pos,
+                                Window.height - assets.camera.height,
+                                assets.camera.width);
 
-                                player.fire.state = .TIMEOUT;
-                            }
                         }
                     },
                     .TIMEOUT => {
-                        player.fire.timeout += ray.GetFrameTime();
-                        if (player.fire.timeout > Fire.timeout_limit) {
-                            player.fire.state = .READY;
-                            player.fire.timeout = 0.0;
-                        }
+                        player.fire.tick();
                     }
                 }
 
@@ -255,6 +272,29 @@ pub fn main() void
                             }
                         }
                     }
+
+                    // maybe shoot
+                    switch(face.fire.state) {
+                        .READY => {
+                            const min = Face.minimum_fire_cooldown;
+                            const max = Face.maximum_fire_cooldown;
+                            const range = max - min;
+                            const cd = prng.random.float(f64) * range + min;
+                            const f = prng.random.intRangeLessThan(
+                                usize, 0, face.states.len);
+                            const xy =
+                                getFaceXY(f, face.pos, face_width, face_height);
+                            warn("boom! {}\n", cd);
+                            face.fire.attemptFire(
+                                face.bullets[0..],
+                                cd,
+                                xy.x,
+                                xy.y,
+                                face_width);
+                        },
+                        .TIMEOUT => { face.fire.tick(); }
+                    }
+                    // if(face.fire.timeout > )
                 }
 
                 // update player bullets
@@ -336,3 +376,4 @@ fn resetGame(s: *GameState, player_start: c_int) void
     @memset(@ptrCast([*]u8, s), 0, @sizeOf(GameState));
     s.player.pos = player_start;
 }
+
