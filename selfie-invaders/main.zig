@@ -4,6 +4,8 @@ const warn = std.debug.warn;
 const rand = std.rand;
 var prng = rand.DefaultPrng.init(0);
 
+const CappedArrayList = @import("puffy").CappedArrayList;
+
 const ray = @import("ray");
 const easings = @cImport({ @cInclude("easings.h"); });
 
@@ -54,8 +56,6 @@ const FireState = enum {
 const Bullet = struct {
     x: c_int,
     y: c_int,
-    pub fn isClear(this: Bullet) bool { return this.x == 0 and this.y == 0; }
-    pub fn clear(this: *Bullet) void { this.x = 0; this.y = 0; }
 };
 
 const Splash = struct {
@@ -73,39 +73,41 @@ const GameCondition = enum {
     LOST,
 };
 
-const Fire = struct {
-    state: FireState,
-    timeout: f64,
-    cooldown: f64,
-
-    pub fn tick(this: *Fire) void {
-        this.timeout += ray.GetFrameTime();
-        if (this.timeout > this.cooldown) {
-            this.state = .READY;
-            this.timeout = 0.0;
-        }
-    }
-    fn attemptFire(
-        this: *Fire,
-        bullets: []Bullet,
+pub fn Fire(comptime size: usize)
+type {
+    return struct {
+        state: FireState,
+        timeout: f64,
         cooldown: f64,
-        x: c_int,
-        y: c_int,
-        w: c_int) void
-    {
-        const ac = countBullets(bullets);
-        if(ac < bullets.len) {
-            const mid = x + @divFloor(w, 2);
-            bullets[ac] = Bullet { .x = mid, .y = y, };
-            this.state = .TIMEOUT;
-            this.cooldown = cooldown;
+
+        pub fn tick(this: *Fire(size)) void {
+            this.timeout += ray.GetFrameTime();
+            if (this.timeout > this.cooldown) {
+                this.state = .READY;
+                this.timeout = 0.0;
+            }
         }
-    }
-};
+        fn attemptFire(
+            this: *Fire(size),
+            bullets: *CappedArrayList(Bullet, size),
+            cooldown: f64,
+            x: c_int,
+            y: c_int,
+            w: c_int)
+        void {
+            if(bullets.count() < bullets.capacity()) {
+                const mid = x + @divFloor(w, 2);
+                _ = bullets.append(Bullet { .x = mid, .y = y, }) catch unreachable;
+                this.state = .TIMEOUT;
+                this.cooldown = cooldown;
+            }
+        }
+    };
+}
 
 const Player = struct {
-    bullets: [8]Bullet,
-    fire: Fire,
+    bullets: CappedArrayList(Bullet, 8),
+    fire: Fire(8),
     const fire_cooldown = 0.3;
     pos: c_int,
 };
@@ -113,10 +115,10 @@ const Player = struct {
 const Face = struct {
     states: [face_count]FaceState,
     death_time: [face_count]f64,
-    bullets: [100]Bullet,
+    bullets: CappedArrayList(Bullet, 100),
     const minimum_fire_cooldown = 0.1;
     const maximum_fire_cooldown = 3.0;
-    fire: Fire,
+    fire: Fire(100),
     pos: c_int,
     direction: c_int,
 };
@@ -181,15 +183,13 @@ pub fn main() void
             }
 
             // draw face bullets
-            for(face.bullets) |bull| {
-                if(bull.isClear()) break;
+            for(face.bullets.toSlice()) |bull| {
                 ray.DrawTexture(assets.teardrop, bull.x, bull.y, ray.WHITE);
             }
 
 
             // draw player bullets
-            for(player.bullets) |bull| {
-                if (bull.isClear()) break;
+            for(player.bullets.toSlice()) |bull| {
                 ray.DrawRectangle(bull.x,
                                   bull.y,
                                   bullet_width,
@@ -255,7 +255,7 @@ pub fn main() void
                     .READY => {
                         if(ray.IsKeyDown(ray.KEY_SPACE)) {
                             player.fire.attemptFire(
-                                player.bullets[0..],
+                                &player.bullets,
                                 Player.fire_cooldown,
                                 player.pos,
                                 Window.height - assets.camera.height,
@@ -307,7 +307,7 @@ pub fn main() void
                                 getFaceXY(f, face.pos, face_width, face_height);
                             warn("boom! {}\n", cd);
                             face.fire.attemptFire(
-                                face.bullets[0..],
+                                &face.bullets,
                                 cd,
                                 xy.x,
                                 xy.y,
@@ -318,11 +318,10 @@ pub fn main() void
                 }
 
                 // update player bullets
-                for(player.bullets) |*bull, idx| {
-                    if(bull.isClear()) break;
+                for(player.bullets.toSlice()) |*bull, idx| {
                     bull.y -= bullet_speed;
                     if(bull.y < -100) {
-                        freeBulletAt(player.bullets[0..], idx);
+                        _ = player.bullets.swapRemove(idx);
                     }
                     const bull_x_end = bull.x + bullet_width;
                     const bull_y_end = bull.y + bullet_height;
@@ -341,11 +340,10 @@ pub fn main() void
                                            face_y_end < bull.y);
                         if(collided) {
                             fs.* = .DEAD;
-                            freeBulletAt(player.bullets[0..], idx);
+                            _ = player.bullets.swapRemove(idx);
                         }
                     }
-                    for(face.bullets) |*fb, i| {
-                        if(fb.isClear()) break;
+                    for(face.bullets.toSlice()) |*fb, i| {
                         const bx_end = fb.x + assets.teardrop.width;
                         const by_end = fb.y + assets.teardrop.height;
                         const collided = !(fb.x > bull_x_end or
@@ -353,18 +351,17 @@ pub fn main() void
                                            fb.y > bull_y_end or
                                                by_end < bull.y);
                         if(collided) {
-                            freeBulletAt(face.bullets[0..], i);
+                            _ = face.bullets.swapRemove(i);
                             const sc = countSplashes(state.splashes[0..]);
                         }
                     }
                 }
 
                 // update face bullets
-                for(face.bullets) |*bull, idx| {
-                    if(bull.isClear()) break;
+                for(face.bullets.toSlice()) |*bull, idx| {
                     bull.y += bullet_speed;
                     if(bull.y > Window.height + 100)
-                        freeBulletAt(face.bullets[0..], idx);
+                        _ = face.bullets.swapRemove(idx);
                     const xy = PosXY{ .x = player.pos, .y = player_y };
                     const player_x_end = xy.x + assets.camera.width;
                     const player_y_end = xy.y + assets.camera.height;
@@ -413,24 +410,6 @@ fn getFaceXY(idx: usize, pos: c_int, width: c_int, height: c_int) PosXY
     };
 }
 
-fn freeBulletAt(bulls: []Bullet, idx: usize) void
-{
-    const last = countBullets(bulls) - 1;
-    bulls[idx] = bulls[last];
-    bulls[last].clear();
-}
-
-fn countBullets(bulls: []Bullet) usize
-{
-    var count: usize = 0;
-    for(bulls) |b| {
-        if (b.isClear()) { break; }
-        else { count += 1; }
-    }
-    return count;
-}
-
-
 fn countSplashes(splashes: []Splash) usize
 {
     var count: usize = 0;
@@ -440,8 +419,6 @@ fn countSplashes(splashes: []Splash) usize
     }
     return count;
 }
-
-
 
 fn resetGame(s: *GameState, player_start: c_int) void
 {

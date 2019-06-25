@@ -19,8 +19,8 @@ pub fn build(b: *Builder) void {
         var exe = b.addExecutable("selfie-invaders", "selfie-invaders/main.zig");
         exe.setBuildMode(mode);
         exe.addIncludeDir("raylib/src");
-        // exe.linkLibrary(raycol);
         exe.addPackagePath("ray", "ray.zig");
+        exe.addPackagePath("puffy", "puffy/src/puffy.zig");
 
         // if (windows) {
         //     exe.setTarget(builtin.Arch.x86_64, builtin.Os.windows, builtin.Abi.gnu);
