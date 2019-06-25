@@ -115,6 +115,7 @@ const Face = struct {
     const max_bullets = 20;
     states: [face_count]FaceState,
     death_time: [face_count]f64,
+    dead_count: usize,
     bullets: CappedArrayList(Bullet, max_bullets),
     const minimum_fire_cooldown = 0.1;
     const maximum_fire_cooldown = 3.0;
@@ -301,16 +302,24 @@ void {
                             const max = Face.maximum_fire_cooldown;
                             const range = max - min;
                             const cd = prng.random.float(f64) * range + min;
-                            const f = prng.random.intRangeLessThan(
-                                usize, 0, face.states.len);
+                            const fth = prng.random.intRangeLessThan(
+                                usize, 0, face.states.len - face.dead_count);
+                            var fc: usize = 0;
+                            var i: usize = 0;
+                            const f = while(i < face.states.len) : (i += 1) {
+                                const s = face.states[i];
+                                if(s == .ALIVE) {
+                                    if(fc == fth) break i;
+                                    fc += 1;
+                                }
+                            } else unreachable;
                             const xy =
                                 getFaceXY(f, face.pos, face_width, face_height);
-                            warn("boom! {}\n", cd);
                             face.fire.attemptFire(
                                 &face.bullets,
                                 cd,
                                 xy.x,
-                                xy.y,
+                                xy.y + @divFloor(face_height, 2),
                                 face_width);
                         },
                         .TIMEOUT => { face.fire.tick(); }
@@ -341,6 +350,7 @@ void {
                                            face_y_end < bull.y);
                         if(collided) {
                             fs.* = .DEAD;
+                            face.dead_count += 1;
                             _ = player.bullets.swapRemove(idx);
                         }
                     }
@@ -378,7 +388,6 @@ void {
                     if(collided) {
                          state.condition = .LOST;
                     }
-
                 }
 
                 // update splashes
@@ -418,4 +427,3 @@ void {
     @memset(@ptrCast([*]u8, s), 0, @sizeOf(GameState));
     s.player.pos = player_start;
 }
-
