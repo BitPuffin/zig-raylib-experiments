@@ -83,6 +83,16 @@ type {
             return self.swapRemove(i);
         }
 
+        pub fn orderedRemove(self: *Self, i: usize)
+        T {
+            const item = self.at(i);
+            var j = i;
+            while(j < self.len) : (j += 1)
+                self.items[j] = self.items[j+1];
+            self.len -= 1;
+            return item;
+        }
+
         pub fn pop(self: *Self)
         T {
             self.len -= 1;
@@ -121,4 +131,11 @@ test "CappedArrayList" {
     var n = try l5.swapRemoveOrError(0);
     testing.expect(n == 3);
     testing.expect(l5.count() == 0);
+
+    try l5.append(1);
+    try l5.append(2);
+    try l5.append(3);
+    try l5.append(4);
+    _ = l5.orderedRemove(2);
+    testing.expect(l5.at(2) == 4);
 }
