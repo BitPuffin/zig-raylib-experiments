@@ -357,6 +357,9 @@ void {
                         }
                     }
                 }
+                for(remBulls.toSlice()) |bi, i| {
+                    _ = player.bullets.orderedRemove(bi - i);
+                }
 
                 // update face bullets
                 for(face.bullets.toSlice()) |*bull, idx| {
