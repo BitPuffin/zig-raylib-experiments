@@ -80,7 +80,8 @@ type {
         timeout: f64,
         cooldown: f64,
 
-        pub fn tick(this: *Fire(size)) void {
+        fn tick(this: *Fire(size))
+        void {
             this.timeout += ray.GetFrameTime();
             if (this.timeout > this.cooldown) {
                 this.state = .READY;
@@ -136,8 +137,8 @@ const Assets = struct {
     teardrop : ray.Texture,
 };
 
-pub fn main() void
-{
+pub fn main()
+void {
     Window.init();
 
     const assets = Assets {
@@ -399,8 +400,8 @@ pub fn main() void
 }
 
 const PosXY = struct { x: c_int, y: c_int };
-fn getFaceXY(idx: usize, pos: c_int, width: c_int, height: c_int) PosXY
-{
+fn getFaceXY(idx: usize, pos: c_int, width: c_int, height: c_int)
+PosXY {
     var col = @intCast(c_int, idx % face_per_row);
     var row: c_int = @intCast(c_int, idx / face_per_row);
     const pad = Window.border_padding;
@@ -410,8 +411,8 @@ fn getFaceXY(idx: usize, pos: c_int, width: c_int, height: c_int) PosXY
     };
 }
 
-fn countSplashes(splashes: []Splash) usize
-{
+fn countSplashes(splashes: []Splash)
+usize {
     var count: usize = 0;
     for(splashes) |s| {
         if (s.isClear()) { break; }
@@ -420,8 +421,8 @@ fn countSplashes(splashes: []Splash) usize
     return count;
 }
 
-fn resetGame(s: *GameState, player_start: c_int) void
-{
+fn resetGame(s: *GameState, player_start: c_int)
+void {
     @memset(@ptrCast([*]u8, s), 0, @sizeOf(GameState));
     s.player.pos = player_start;
 }
