@@ -54,6 +54,17 @@ const FireState = enum {
 const Bullet = struct {
     x: c_int,
     y: c_int,
+    pub fn isClear(this: Bullet) bool { return this.x == 0 and this.y == 0; }
+    pub fn clear(this: *Bullet) void { this.x = 0; this.y = 0; }
+};
+
+const Splash = struct {
+    x: c_int,
+    y: c_int,
+    t: f64,
+
+    pub fn isClear(this: Splash) bool { return this.x == 0 and this.y == 0; }
+    pub fn clear(this: *Splash) void { this.x = 0; this.y = 0; this.t = 0; }
 };
 
 const GameCondition = enum {
@@ -102,9 +113,9 @@ const Player = struct {
 const Face = struct {
     states: [face_count]FaceState,
     death_time: [face_count]f64,
-    bullets: [4]Bullet,
-    const minimum_fire_cooldown = 1.5;
-    const maximum_fire_cooldown = 7.0;
+    bullets: [100]Bullet,
+    const minimum_fire_cooldown = 0.1;
+    const maximum_fire_cooldown = 3.0;
     fire: Fire,
     pos: c_int,
     direction: c_int,
@@ -114,11 +125,13 @@ const GameState = struct {
     condition: GameCondition,
     player: Player,
     face: Face,
+    splashes: [100]Splash,
 };
 
 const Assets = struct {
     camera: ray.Texture,
     weary_face : ray.Texture,
+    teardrop : ray.Texture,
 };
 
 pub fn main() void
@@ -128,6 +141,7 @@ pub fn main() void
     const assets = Assets {
         .camera = ray.LoadTexture(c"selfie-invaders/camera.png"),
         .weary_face = ray.LoadTexture(c"selfie-invaders/weary-face.png"),
+        .teardrop = ray.LoadTexture(c"selfie-invaders/droplet.png"),
     };
 
     const player_y = Window.height - assets.camera.height - Window.border_padding;
@@ -166,9 +180,16 @@ pub fn main() void
                 }
             }
 
+            // draw face bullets
+            for(face.bullets) |bull| {
+                if(bull.isClear()) break;
+                ray.DrawTexture(assets.teardrop, bull.x, bull.y, ray.WHITE);
+            }
+
+
             // draw player bullets
             for(player.bullets) |bull| {
-                if (isBulletClear(bull)) break;
+                if (bull.isClear()) break;
                 ray.DrawRectangle(bull.x,
                                   bull.y,
                                   bullet_width,
@@ -294,16 +315,18 @@ pub fn main() void
                         },
                         .TIMEOUT => { face.fire.tick(); }
                     }
-                    // if(face.fire.timeout > )
                 }
 
                 // update player bullets
                 for(player.bullets) |*bull, idx| {
-                    if(isBulletClear(bull.*)) break;
+                    if(bull.isClear()) break;
                     bull.y -= bullet_speed;
                     if(bull.y < -100) {
                         freeBulletAt(player.bullets[0..], idx);
                     }
+                    const bull_x_end = bull.x + bullet_width;
+                    const bull_y_end = bull.y + bullet_height;
+
                     for(face.states) |*fs, i| {
                         if(fs.* != .ALIVE) continue;
                         const xy = getFaceXY(i,
@@ -312,8 +335,6 @@ pub fn main() void
                                              face_height);
                         const face_x_end = xy.x + face_width;
                         const face_y_end = xy.y + face_height;
-                        const bull_x_end = bull.x + bullet_width;
-                        const bull_y_end = bull.y + bullet_height;
                         const collided = !(xy.x > bull_x_end or
                                            face_x_end < bull.x or
                                            xy.y > bull_y_end or
@@ -323,6 +344,46 @@ pub fn main() void
                             freeBulletAt(player.bullets[0..], idx);
                         }
                     }
+                    for(face.bullets) |*fb, i| {
+                        if(fb.isClear()) break;
+                        const bx_end = fb.x + assets.teardrop.width;
+                        const by_end = fb.y + assets.teardrop.height;
+                        const collided = !(fb.x > bull_x_end or
+                                           bx_end < bull.x or
+                                           fb.y > bull_y_end or
+                                               by_end < bull.y);
+                        if(collided) {
+                            freeBulletAt(face.bullets[0..], i);
+                            const sc = countSplashes(state.splashes[0..]);
+                        }
+                    }
+                }
+
+                // update face bullets
+                for(face.bullets) |*bull, idx| {
+                    if(bull.isClear()) break;
+                    bull.y += bullet_speed;
+                    if(bull.y > Window.height + 100)
+                        freeBulletAt(face.bullets[0..], idx);
+                    const xy = PosXY{ .x = player.pos, .y = player_y };
+                    const player_x_end = xy.x + assets.camera.width;
+                    const player_y_end = xy.y + assets.camera.height;
+                    const bull_x_end = bull.x + bullet_width;
+                    const bull_y_end = bull.y + bullet_height;
+                    const collided = !(xy.x > bull_x_end or
+                                           player_x_end < bull.x or
+                                           xy.y > bull_y_end or
+                                           player_y_end < bull.y);
+                    if(collided) {
+                         state.condition = .LOST;
+                    }
+
+                }
+
+                // update splashes
+                for(state.splashes) |*splash, idx| {
+                    if(splash.isClear()) break;
+                    splash.t += ray.GetFrameTime();
                 }
             },
             .WON, .LOST => {
@@ -352,24 +413,35 @@ fn getFaceXY(idx: usize, pos: c_int, width: c_int, height: c_int) PosXY
     };
 }
 
-fn isBulletClear(bull: Bullet) bool { return bull.x == 0 and bull.y == 0; }
-fn clearBullet(bull: *Bullet) void { bull.x = 0; bull.y = 0; }
 fn freeBulletAt(bulls: []Bullet, idx: usize) void
 {
     const last = countBullets(bulls) - 1;
     bulls[idx] = bulls[last];
-    clearBullet(&bulls[last]);
+    bulls[last].clear();
 }
 
 fn countBullets(bulls: []Bullet) usize
 {
     var count: usize = 0;
     for(bulls) |b| {
-        if (isBulletClear(b)) { break; }
+        if (b.isClear()) { break; }
         else { count += 1; }
     }
     return count;
 }
+
+
+fn countSplashes(splashes: []Splash) usize
+{
+    var count: usize = 0;
+    for(splashes) |s| {
+        if (s.isClear()) { break; }
+        else { count += 1; }
+    }
+    return count;
+}
+
+
 
 fn resetGame(s: *GameState, player_start: c_int) void
 {
