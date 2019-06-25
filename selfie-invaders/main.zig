@@ -319,6 +319,7 @@ void {
                 }
 
                 // update player bullets
+                var remBulls = CappedArrayList(usize, Player.max_bullets).init();
                 for(player.bullets.toSlice()) |*bull, idx| {
                     bull.y -= bullet_speed;
                     if(bull.y < -100) {
@@ -353,7 +354,7 @@ void {
                                                by_end < bull.y);
                         if(collided) {
                             _ = face.bullets.swapRemove(i);
-                            const sc = countSplashes(state.splashes[0..]);
+                            _ = remBulls.append(idx) catch unreachable;
                         }
                     }
                 }
