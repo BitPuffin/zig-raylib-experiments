@@ -106,18 +106,19 @@ type {
 const Player = struct {
     const max_bullets = 8;
     bullets: CappedArrayList(Bullet, 8),
-    fire: Fire(8),
+    fire: Fire(max_bullets),
     const fire_cooldown = 0.3;
     pos: c_int,
 };
 
 const Face = struct {
+    const max_bullets = 100;
     states: [face_count]FaceState,
     death_time: [face_count]f64,
-    bullets: CappedArrayList(Bullet, 100),
+    bullets: CappedArrayList(Bullet, max_bullets),
     const minimum_fire_cooldown = 0.1;
     const maximum_fire_cooldown = 3.0;
-    fire: Fire(100),
+    fire: Fire(max_bullets),
     pos: c_int,
     direction: c_int,
 };
@@ -126,7 +127,7 @@ const GameState = struct {
     condition: GameCondition,
     player: Player,
     face: Face,
-    splashes: CappedArrayList(Splash, 100),
+    splashes: CappedArrayList(Splash, Face.max_bullets * 2), // overkill
 };
 
 const Assets = struct {
