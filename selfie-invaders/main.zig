@@ -62,9 +62,6 @@ const Splash = struct {
     x: c_int,
     y: c_int,
     t: f64,
-
-    pub fn isClear(this: Splash) bool { return this.x == 0 and this.y == 0; }
-    pub fn clear(this: *Splash) void { this.x = 0; this.y = 0; this.t = 0; }
 };
 
 const GameCondition = enum {
@@ -107,6 +104,7 @@ type {
 }
 
 const Player = struct {
+    const max_bullets = 8;
     bullets: CappedArrayList(Bullet, 8),
     fire: Fire(8),
     const fire_cooldown = 0.3;
@@ -128,7 +126,7 @@ const GameState = struct {
     condition: GameCondition,
     player: Player,
     face: Face,
-    splashes: [100]Splash,
+    splashes: CappedArrayList(Splash, 100),
 };
 
 const Assets = struct {
@@ -380,8 +378,7 @@ void {
                 }
 
                 // update splashes
-                for(state.splashes) |*splash, idx| {
-                    if(splash.isClear()) break;
+                for(state.splashes.toSlice()) |*splash, idx| {
                     splash.t += ray.GetFrameTime();
                 }
             },
@@ -410,16 +407,6 @@ PosXY {
         .x = col * (pad + width) + pad + pos,
         .y = row * (height + pad) + pad,
     };
-}
-
-fn countSplashes(splashes: []Splash)
-usize {
-    var count: usize = 0;
-    for(splashes) |s| {
-        if (s.isClear()) { break; }
-        else { count += 1; }
-    }
-    return count;
 }
 
 fn resetGame(s: *GameState, player_start: c_int)
