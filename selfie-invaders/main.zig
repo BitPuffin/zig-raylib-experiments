@@ -112,7 +112,7 @@ const Player = struct {
 };
 
 const Face = struct {
-    const max_bullets = 100;
+    const max_bullets = 20;
     states: [face_count]FaceState,
     death_time: [face_count]f64,
     bullets: CappedArrayList(Bullet, max_bullets),
