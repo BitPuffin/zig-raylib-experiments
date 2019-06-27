@@ -369,14 +369,11 @@ void {
                                 fc += 1;
                             }
                         } else unreachable;
-                        const xy =
-                            getFaceXY(f, face.pos, info.face.width, info.face.height);
-                        face.fire.attemptFire(
-                            &face.bullets,
-                            cd,
-                            xy.x,
-                            xy.y + @divFloor(info.face.height, 2),
-                            info.face.width);
+                        const w = info.face.width;
+                        const h = info.face.height;
+                        const xy = getFaceXY(f, face.pos, w, h);
+                        const y = xy.y + @divFloor(h, 2);
+                        face.fire.attemptFire(&face.bullets, cd, xy.x, y, w);
                     },
                     .TIMEOUT => { face.fire.tick(); }
                 }
