@@ -50,6 +50,16 @@ const FireState = enum {
 const Bullet = struct {
     x: c_int,
     y: c_int,
+
+    fn toRectangle(self: *@This(), info: BulletInfo)
+    ray.Rectangle {
+        return ray.Rectangle {
+            .x = @intToFloat(f32, self.x),
+            .y = @intToFloat(f32, self.y),
+            .width = @intToFloat(f32, info.width),
+            .height = @intToFloat(f32, info.height),
+        };
+    }
 };
 
 const Splash = struct {
@@ -103,6 +113,16 @@ const Player = struct {
     fire: Fire(max_bullets),
     const fire_cooldown = 0.3;
     pos: c_int,
+
+    fn toRectangle(self: *@This(), info: PlayerInfo)
+    ray.Rectangle {
+        return ray.Rectangle {
+            .x = @intToFloat(f32, self.pos),
+            .y = @intToFloat(f32, info.y),
+            .width = @intToFloat(f32, info.width),
+            .height = @intToFloat(f32, info.height),
+        };
+    }
 };
 
 const Face = struct {
@@ -116,6 +136,17 @@ const Face = struct {
     fire: Fire(max_bullets),
     pos: c_int,
     direction: c_int,
+
+    fn toRectangle(self: *const Face, i: usize, info: FaceInfo)
+    ray.Rectangle {
+        const xy = getFaceXY(i, self.pos, info.width, info.height);
+        return ray.Rectangle {
+            .x = @intToFloat(f32, xy.x),
+            .y = @intToFloat(f32, xy.y),
+            .width = @intToFloat(f32, info.width),
+            .height = @intToFloat(f32, info.height),
+        };
+    }
 };
 
 const GameState = struct {
@@ -386,35 +417,23 @@ void {
                 if(bull.y < -100) {
                     _ = player.bullets.swapRemove(idx);
                 }
+                const bullet_rectangle = bull.toRectangle(info.player.bullet);
                 const bull_x_end = bull.x + info.player.bullet.width;
                 const bull_y_end = bull.y + info.player.bullet.height;
 
                 for(face.states) |*fs, i| {
                     if(fs.* != .ALIVE) continue;
-                    const xy = getFaceXY(i,
-                                         face.pos,
-                                         info.face.width,
-                                         info.face.height);
-                    const face_x_end = xy.x + info.face.width;
-                    const face_y_end = xy.y + info.face.height;
-                    const collided = !(xy.x > bull_x_end or
-                                           face_x_end < bull.x or
-                                           xy.y > bull_y_end or
-                                           face_y_end < bull.y);
-                    if(collided) {
+                    const face_rectangle = face.toRectangle(i, info.face);
+                    if(ray.CheckCollisionRecs(bullet_rectangle, face_rectangle)) {
                         fs.* = .DEAD;
                         face.dead_count += 1;
                         _ = player.bullets.swapRemove(idx);
                     }
                 }
                 for(face.bullets.toSlice()) |*fb, i| {
-                    const bx_end = fb.x + info.face.bullet.width;
-                    const by_end = fb.y + info.face.bullet.height;
-                    const collided = !(fb.x > bull_x_end or
-                                           bx_end < bull.x or
-                                           fb.y > bull_y_end or
-                                           by_end < bull.y);
-                    if(collided) {
+                    const fb_rectangle =
+                        fb.toRectangle(info.face.bullet);
+                    if(ray.CheckCollisionRecs(bullet_rectangle, fb_rectangle)) {
                         _ = face.bullets.swapRemove(i);
                         _ = remBulls.append(idx) catch unreachable;
                     }
@@ -429,16 +448,10 @@ void {
                 bull.y += BulletInfo.speed;
                 if(bull.y > Window.height + 100)
                     _ = face.bullets.swapRemove(idx);
-                const xy = PosXY{ .x = player.pos, .y = info.player.y };
-                const player_x_end = xy.x + info.player.width;
-                const player_y_end = xy.y + info.player.height;
-                const bull_x_end = bull.x + info.player.bullet.width;
-                const bull_y_end = bull.y + info.player.bullet.height;
-                const collided = !(xy.x > bull_x_end or
-                                       player_x_end < bull.x or
-                                       xy.y > bull_y_end or
-                                       player_y_end < bull.y);
-                if(collided) {
+                const player_rectangle = player.toRectangle(info.player);
+                const bull_rectangle = bull.toRectangle(info.player.bullet);
+
+                if(ray.CheckCollisionRecs(player_rectangle, bull_rectangle)) {
                     state.condition = .LOST;
                 }
             }
