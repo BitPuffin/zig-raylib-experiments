@@ -31,7 +31,6 @@ const face_count = 16;
 const face_per_row = 8;
 const face_speed = 8;
 
-const camera_speed = 16;
 const camera_hitbox_shrink_y = 20;
 const camera_hitbox_shrink_x = 10;
 
@@ -133,11 +132,13 @@ const Assets = struct {
 };
 
 const PlayerInfo = struct {
+    const min_pos = screen_offset;
+    const speed = 16;
+
     width: c_int,
     height: c_int,
     y: c_int,
     starting_pos: c_int,
-    const min_pos = screen_offset;
     max_pos: c_int,
     bullet: BulletInfo,
 };
@@ -294,10 +295,10 @@ void {
         .PLAYING => {
             // update player
             if(ray.IsKeyDown(ray.KEY_LEFT)) {
-                player.pos -= camera_speed;
+                player.pos -= PlayerInfo.speed;
             }
             if(ray.IsKeyDown(ray.KEY_RIGHT)) {
-                player.pos += camera_speed;
+                player.pos += PlayerInfo.speed;
             }
 
             {
